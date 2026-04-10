@@ -637,7 +637,53 @@ async function saveNews() {
   else   ({ error }=await sb.from('news_posts').insert(payload));
   if(error) toast('Error: '+error.message,'error');
   else { toast(id?'Berita diperbarui!':'Berita ditambahkan!'); closeModal('modal-news'); loadNews(); loadStats(); }
+
 }
+
+// ══════════════════════════════════════════════════════════
+// UPLOAD ke R2 via Worker
+// ══════════════════════════════════════════════════════════
+document.getElementById('media-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    toast('Hanya file gambar yang diperbolehkan.', 'error'); return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Ukuran file maksimal 5MB.', 'error'); return;
+  }
+
+  toast('⏳ Mengupload foto...');
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { toast('Sesi expired, silakan login ulang.', 'error'); return; }
+
+    const resp = await fetch(
+      `/api/upload-url?filename=${encodeURIComponent(file.name)}&type=${encodeURIComponent(file.type)}`,
+      { headers: { 'Authorization': `Bearer ${session.access_token}` } }
+    );
+    if (!resp.ok) throw new Error('Gagal mendapat upload URL');
+    const { uploadUrl, publicUrl } = await resp.json();
+
+    const up = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type }
+    });
+    if (!up.ok) throw new Error('Upload ke R2 gagal');
+
+    await navigator.clipboard.writeText(publicUrl);
+    toast(`✅ Berhasil! URL disalin ke clipboard`);
+    loadMedia();
+
+  } catch (err) {
+    toast('Upload gagal: ' + err.message, 'error');
+  }
+
+  e.target.value = '';
+});
 
 async function deleteNews(id) {
   if(!confirm('Hapus berita ini?')) return;
