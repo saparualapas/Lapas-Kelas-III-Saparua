@@ -1,0 +1,17 @@
+name = "lapassaparua"
+main = "worker.js"
+compatibility_date = "2026-04-10"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "lapassaparua"
+
+[assets]
+directory = "./"
+binding = "ASSETS"
+
+[vars]
+R2_PUBLIC_URL  = "https://pub-68ad890dcc3b4cf48602584134b36576.r2.dev"
+R2_BUCKET_NAME = "lapassaparua"
+R2_ACCOUNT_ID  = "707ded1990065af7ad305e0b0f1b220c"

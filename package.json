@@ -1,0 +1,23 @@
+{
+  "name": "lapas-v2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "worker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saparualapas/Lapas-Kelas-III-Saparua.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/saparualapas/Lapas-Kelas-III-Saparua/issues"
+  },
+  "homepage": "https://github.com/saparualapas/Lapas-Kelas-III-Saparua#readme",
+  "dependencies": {
+    "aws4fetch": "^1.0.20"
+  }
+}
