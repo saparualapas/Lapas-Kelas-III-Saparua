@@ -41,7 +41,7 @@
     .spinner-sm{width:18px;height:18px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
   </style>
 </head>
-<body>
+<body style="visibility:hidden">
 
 <div class="card">
   <div class="card-header">
@@ -95,6 +95,8 @@
 (async () => {
   const { data:{session} } = await sb.auth.getSession();
   if (session) { window.location.href = 'dashboard.html'; return; }
+  // Show body after confirming not logged in
+  document.body.style.visibility = 'visible';
 
   // Load branding
   const { data } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);

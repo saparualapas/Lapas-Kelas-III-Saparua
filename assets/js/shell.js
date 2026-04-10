@@ -32,10 +32,10 @@ const SHELL = {
   // ── Navbar HTML ──────────────────────────────────────────
   navbarHTML(settings, activePage) {
     const links = [
-      { href: '/',          label: 'Beranda',         key: 'home' },
-      { href: '/profil',    label: 'Profil',           key: 'profil' },
-      { href: '/berita',    label: 'Berita & Kegiatan',key: 'berita' },
-      { href: '/layanan',   label: 'Layanan',          key: 'layanan' },
+      { href: 'index',   label: 'Beranda',         key: 'home' },
+      { href: 'profil',  label: 'Profil',           key: 'profil' },
+      { href: 'berita',  label: 'Berita & Kegiatan',key: 'berita' },
+      { href: 'layanan', label: 'Layanan',          key: 'layanan' },
     ];
     const navLinks = links.map(l =>
       `<li><a href="${l.href}.html" class="nav-link${activePage===l.key?' active':''}" data-key="${l.key}">${l.label}</a></li>`
@@ -57,7 +57,7 @@ const SHELL = {
         ${navLinks}
         <li class="nav-sep"></li>
         <li><a href="${visitLink}" class="nav-cta" id="nav-visit" target="_blank" rel="noopener">🔗 Daftar Kunjungan</a></li>
-        <li><a href="/admin/login.html" class="nav-admin-link" id="nav-admin-link">🔐 Admin</a></li>
+        <li><a href="admin/login.html" class="nav-admin-link" id="nav-admin-link">🔐 Admin</a></li>
       </ul>
       <button class="hamburger" id="hamburger" aria-label="Menu">
         <span></span><span></span><span></span>
@@ -95,25 +95,25 @@ const SHELL = {
         <div class="footer-col">
           <h4>Navigasi</h4>
           <ul>
-            <li><a href="/index.html">Beranda</a></li>
-            <li><a href="/profil.html">Profil</a></li>
-            <li><a href="/berita.html">Berita & Kegiatan</a></li>
-            <li><a href="/layanan.html">Layanan</a></li>
+            <li><a href="index.html">Beranda</a></li>
+            <li><a href="profil.html">Profil</a></li>
+            <li><a href="berita.html">Berita & Kegiatan</a></li>
+            <li><a href="layanan.html">Layanan</a></li>
           </ul>
         </div>
         <div class="footer-col">
           <h4>Layanan</h4>
           <ul>
             <li><a href="${vLink}" target="_blank">Daftar Kunjungan</a></li>
-            <li><a href="/layanan.html">Penitipan Barang</a></li>
-            <li><a href="/layanan.html">Syarat & Ketentuan</a></li>
-            <li><a href="/layanan.html">Kontak</a></li>
+            <li><a href="layanan.html">Penitipan Barang</a></li>
+            <li><a href="layanan.html">Syarat & Ketentuan</a></li>
+            <li><a href="layanan.html">Kontak</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
         <span>© ${new Date().getFullYear()} ${name}. Hak Cipta Dilindungi.</span>
-        <a href="/admin/login.html" class="footer-admin-link">Admin</a>
+        <a href="admin/login.html" class="footer-admin-link">Admin</a>
       </div>
     </footer>`;
   },
