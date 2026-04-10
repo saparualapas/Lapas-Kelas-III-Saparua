@@ -3,7 +3,7 @@
 // ╚══════════════════════════════════════════════════════╝
 const SUPABASE_URL      = 'https://ftjnhtvldsgzdyhtycdi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0am5odHZsZHNnemR5aHR5Y2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTI1ODYsImV4cCI6MjA5MTE2ODU4Nn0.dxxjODoqWUGItnPnOO6aCG3OU0HFtrcMuujWcB6thj0';
-const R2_PUBLIC_URL     = 'https://GANTI_R2_PUBLIC_URL.r2.dev'; // tanpa trailing slash
+const R2_PUBLIC_URL     = 'https://707ded1990065af7ad305e0b0f1b220c.r2.cloudflarestorage.com'; // tanpa trailing slash
 // ╔══════════════════════════════════════════════════════╗
 // ║  JANGAN EDIT DI BAWAH INI                           ║
 // ╚══════════════════════════════════════════════════════╝
