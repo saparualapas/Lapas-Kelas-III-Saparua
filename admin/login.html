@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Login Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    :root{--navy:#0B1829;--navy-2:#122240;--navy-3:#1A3360;--gold:#C8A44A;--gold-2:#E2C47E;--white:#FFFFFF;--gray-2:#6B7280;--gray-4:#D1D5DB;--gray-5:#F3F4F6;--red:#DC2626;--green:#059669;--ff-display:'Cormorant Garamond',Georgia,serif;--ff-body:'Plus Jakarta Sans',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--ff-body);background:var(--navy);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;position:relative;overflow:hidden}
+    body::before{content:'';position:fixed;inset:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 30v-8h-2v8h-8v2h8v8h2v-8h8v-2z' fill='%23C8A44A'/%3E%3C/svg%3E")}
+    .card{background:var(--white);border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.4);position:relative;z-index:1}
+    .card-header{background:var(--navy-2);padding:2.5rem 2rem 2.25rem;text-align:center;position:relative}
+    .card-header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:24px;background:var(--white);clip-path:ellipse(55% 100% at 50% 100%)}
+    .logo-ring{width:80px;height:80px;border-radius:50%;border:2px solid var(--gold);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;background:var(--navy);position:relative}
+    .logo-ring::before{content:'';position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(200,164,74,.3);animation:spin 8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .logo-img{width:60px;height:60px;border-radius:50%;object-fit:cover;background:var(--navy-3)}
+    .card-title{font-family:var(--ff-display);font-size:1.5rem;color:var(--white);margin-bottom:.25rem}
+    .card-sub{font-size:.72rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em}
+    .card-body{padding:2rem}
+    .panel{display:none}.panel.active{display:block}
+    .form-group{margin-bottom:1.1rem}
+    .form-label{display:block;font-size:.82rem;font-weight:600;color:var(--navy);margin-bottom:.4rem}
+    .form-control{width:100%;padding:.72rem 1rem;border:1.5px solid var(--gray-4);border-radius:8px;font-size:.875rem;font-family:var(--ff-body);outline:none;transition:all .2s;color:var(--navy)}
+    .form-control:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,164,74,.1)}
+    .btn{width:100%;padding:.85rem;border:none;border-radius:8px;font-size:.9rem;font-weight:700;font-family:var(--ff-body);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+    .btn-navy{background:var(--navy);color:white}.btn-navy:hover:not(:disabled){background:var(--navy-2)}
+    .btn:disabled{opacity:.55;pointer-events:none}
+    .alert{padding:.875rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem}
+    .alert-danger{background:#FEF2F2;color:#991B1B;border-left:4px solid var(--red)}
+    .alert-success{background:#ECFDF5;color:#065F46;border-left:4px solid var(--green)}
+    .alert-info{background:#EFF6FF;color:#1E40AF;border-left:4px solid #3B82F6}
+    .link-btn{background:none;border:none;color:var(--gold);font-size:.82rem;cursor:pointer;font-family:var(--ff-body);padding:0;transition:opacity .2s}
+    .link-btn:hover{opacity:.75}
+    .card-footer{padding:.75rem 2rem 1.75rem;text-align:center;border-top:1px solid var(--gray-5)}
+    .card-footer a{font-size:.82rem;color:var(--gray-2)}
+    .card-footer a:hover{color:var(--navy)}
+    .spinner-sm{width:18px;height:18px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <div class="logo-ring"><img class="logo-img" id="login-logo" src="https://placehold.co/60x60/122240/C8A44A?text=L" alt="Logo"/></div>
+    <div class="card-title">Dashboard Admin</div>
+    <div class="card-sub" id="login-appname">Lapas</div>
+  </div>
+
+  <div class="card-body">
+    <div id="alert-area"></div>
+
+    <!-- Panel Login -->
+    <div class="panel active" id="panel-login">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="login-email" class="form-control" placeholder="admin@lapas.go.id" autocomplete="email"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;justify-content:space-between">
+          Password
+          <button class="link-btn" onclick="switchPanel('panel-forgot')">Lupa password?</button>
+        </label>
+        <input type="password" id="login-pass" class="form-control" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn btn-navy" id="btn-login" onclick="doLogin()">Masuk ke Dashboard</button>
+    </div>
+
+    <!-- Panel Lupa Password -->
+    <div class="panel" id="panel-forgot">
+      <div class="alert alert-info">Masukkan email akun admin Anda. Link reset password akan dikirim ke email tersebut.</div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="forgot-email" class="form-control" placeholder="admin@lapas.go.id"/>
+      </div>
+      <button class="btn btn-navy" id="btn-forgot" onclick="doForgot()">📧 Kirim Link Reset</button>
+      <div style="text-align:center;margin-top:1rem">
+        <button class="link-btn" onclick="switchPanel('panel-login')">← Kembali ke Login</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card-footer">
+    <a href="../index.html">← Kembali ke Website</a>
+  </div>
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script>
+// Check session — if already logged in, redirect
+(async () => {
+  const { data:{session} } = await sb.auth.getSession();
+  if (session) { window.location.href = 'dashboard.html'; return; }
+
+  // Load branding
+  const { data } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
+  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
+  if (s.app_name)  document.getElementById('login-appname').textContent = s.app_name;
+  if (s.logo_url)  document.getElementById('login-logo').src = s.logo_url;
+  if (s.app_name)  document.title = `Login Admin — ${s.app_name}`;
+})();
+
+function switchPanel(id) {
+  document.getElementById('alert-area').innerHTML = '';
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setAlert(html) { document.getElementById('alert-area').innerHTML = html; }
+function setBtnLoading(id, loading, label='') {
+  const btn = document.getElementById(id);
+  if(loading) btn.innerHTML = '<div class="spinner-sm"></div> Memproses...';
+  else        btn.innerHTML = label;
+  btn.disabled = loading;
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  setAlert('');
+  if(!email||!pass) { setAlert('<div class="alert alert-danger">Email dan password wajib diisi.</div>'); return; }
+  setBtnLoading('btn-login', true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error) {
+    setAlert(`<div class="alert alert-danger">Login gagal: ${error.message}</div>`);
+    setBtnLoading('btn-login', false, 'Masuk ke Dashboard');
+  } else {
+    setAlert('<div class="alert alert-success">✅ Berhasil! Mengalihkan ke dashboard...</div>');
+    setTimeout(()=>window.location.href='dashboard.html', 900);
+  }
+}
+
+async function doForgot() {
+  const email = document.getElementById('forgot-email').value.trim();
+  setAlert('');
+  if(!email) { setAlert('<div class="alert alert-danger">Email wajib diisi.</div>'); return; }
+  setBtnLoading('btn-forgot', true);
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/admin/reset-password.html'
+  });
+  setBtnLoading('btn-forgot', false, '📧 Kirim Link Reset');
+  if(error) setAlert(`<div class="alert alert-danger">Error: ${error.message}</div>`);
+  else      setAlert('<div class="alert alert-success">✅ Link reset password telah dikirim ke email Anda. Periksa kotak masuk.</div>');
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter' && document.getElementById('panel-login').classList.contains('active')) doLogin();
+});
+</script>
+</body>
+</html>

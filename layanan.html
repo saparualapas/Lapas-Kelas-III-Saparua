@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="page-title-meta" id="page-title-meta" content="Layanan"/>
+  <title>Layanan</title>
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+<div id="app">
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="breadcrumb"><a href="index.html">Beranda</a><span class="sep">›</span><span>Layanan</span></div>
+    <h1>Informasi Layanan</h1>
+    <p>Panduan prosedur dan ketentuan layanan untuk masyarakat</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="tab-nav" id="tab-nav">
+      <button class="tab-btn active" data-tab="kunjungan">📋 Alur Kunjungan</button>
+      <button class="tab-btn" data-tab="penitipan">📦 Penitipan Barang</button>
+      <button class="tab-btn" data-tab="syarat">📄 Syarat & Ketentuan</button>
+      <button class="tab-btn" data-tab="kontak">📞 Kontak</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-kunjungan">
+      <div class="layanan-card">
+        <h2>Alur Pendaftaran Kunjungan</h2>
+        <div id="content-kunjungan" class="rich-content"><div class="loading-center"><div class="spinner"></div></div></div>
+      </div>
+      <div class="cta-box" id="cta-kunjungan" style="display:none">
+        <h3>Siap Mendaftar Kunjungan?</h3>
+        <p>Daftar secara online melalui sistem kami</p>
+        <a href="#" id="cta-visit-btn" class="btn btn-gold btn-lg">📋 Daftar Kunjungan Sekarang</a>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-penitipan">
+      <div class="layanan-card">
+        <h2>Alur Penitipan Barang</h2>
+        <div id="content-penitipan" class="rich-content"><div class="loading-center"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-syarat">
+      <div class="layanan-card">
+        <h2>Syarat & Ketentuan</h2>
+        <div id="content-syarat" class="rich-content"><div class="loading-center"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-kontak">
+      <div class="layanan-card">
+        <h2>Kontak & Informasi</h2>
+        <div id="content-kontak" class="rich-content"><div class="loading-center"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/shell.js"></script>
+<script>
+(async () => {
+  const settings = await SHELL.init('layanan');
+
+  // Set visit link on CTA
+  const vLink = settings.external_visit_link || '#';
+  if (vLink !== '#') {
+    document.getElementById('cta-visit-btn').href = vLink;
+    document.getElementById('cta-kunjungan').style.display = 'block';
+  }
+
+  // Load all page contents in one query
+  const { data: pages } = await sb.from('page_contents').select('page_name,body_text');
+  const pc = {};
+  (pages||[]).forEach(p => pc[p.page_name] = p.body_text);
+
+  const fallback = name => `<p style="color:var(--gray-2);font-style:italic">Konten "${name}" belum diatur oleh admin.</p>`;
+
+  document.getElementById('content-kunjungan').innerHTML = pc['alur-kunjungan'] || fallback('Alur Kunjungan');
+  document.getElementById('content-penitipan').innerHTML = pc['alur-penitipan'] || fallback('Alur Penitipan');
+  document.getElementById('content-syarat').innerHTML    = pc['syarat-ketentuan'] || fallback('Syarat & Ketentuan');
+
+  // Kontak — build from settings if no custom content
+  if (pc['kontak']) {
+    document.getElementById('content-kontak').innerHTML = pc['kontak'];
+  } else {
+    const addr  = settings.office_address || '—';
+    const phone = settings.office_phone || '—';
+    const email = settings.office_email || '—';
+    document.getElementById('content-kontak').innerHTML = `
+      <h3>📍 Alamat</h3><p>${addr}</p>
+      <h3>📞 Telepon</h3><p>${phone}</p>
+      <h3>✉️ Email</h3><p>${email}</p>
+      <h3>⏰ Jam Pelayanan</h3>
+      <p>Senin — Jumat : 08.00 — 16.00 WIT<br/>Sabtu : 08.00 — 12.00 WIT<br/>Minggu & Libur : Tutup</p>`;
+  }
+
+  // Tabs
+  document.getElementById('tab-nav').addEventListener('click', e => {
+    const btn = e.target.closest('.tab-btn'); if(!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+})();
+</script>
+</body>
+</html>

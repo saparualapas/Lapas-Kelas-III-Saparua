@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="page-title-meta" id="page-title-meta" content="Berita & Kegiatan"/>
+  <title>Berita & Kegiatan</title>
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+<div id="app">
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="breadcrumb"><a href="index.html">Beranda</a><span class="sep">›</span><span>Berita & Kegiatan</span></div>
+    <h1>Berita & Kegiatan</h1>
+    <p>Informasi terkini seputar kegiatan lembaga</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <!-- Search + Filter bar -->
+    <div style="display:flex;gap:.75rem;margin-bottom:2rem;flex-wrap:wrap;align-items:center">
+      <input id="search-q" class="form-control" style="max-width:360px;flex:1" placeholder="🔍  Cari berita..."/>
+      <button class="btn btn-primary" id="search-btn">Cari</button>
+      <button class="btn btn-outline" id="reset-btn">Reset</button>
+    </div>
+
+    <!-- Navigation arrows -->
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-bottom:1rem">
+      <button class="btn btn-outline btn-sm" id="prev-btn">‹ Sebelumnya</button>
+      <button class="btn btn-outline btn-sm" id="next-btn">Berikutnya ›</button>
+    </div>
+
+    <div class="news-grid" id="news-grid">
+      <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+    <div class="pagination" id="pag"></div>
+  </div>
+</section>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="news-modal">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-header">
+      <h3 id="m-title">Detail Berita</h3>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div style="overflow:hidden">
+      <div id="m-img-wrap"></div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+        <span class="badge badge-gold" id="m-date"></span>
+        <span style="font-size:.8rem;color:var(--gray-2)" id="m-author"></span>
+      </div>
+      <div class="rich-content" id="m-content"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="modal-close-2">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/shell.js"></script>
+<script>
+const PER_PAGE = 9;
+let allNews = [], filtered = [], page = 1;
+
+(async () => {
+  await SHELL.init('berita');
+  const { data } = await sb.from('news_posts').select('*').order('created_at',{ascending:false});
+  allNews = data || [];
+  filtered = allNews;
+  renderNews();
+
+  // Check URL param for direct open
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (id) { const n = allNews.find(x=>x.id===id); if(n) openModal(n); }
+
+  document.getElementById('search-btn').addEventListener('click', doSearch);
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    document.getElementById('search-q').value=''; filtered=allNews; page=1; renderNews();
+  });
+  document.getElementById('search-q').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+  document.getElementById('prev-btn').addEventListener('click', () => { if(page>1){page--; renderNews(); scrollTop(); } });
+  document.getElementById('next-btn').addEventListener('click', () => { const max=Math.ceil(filtered.length/PER_PAGE); if(page<max){page++; renderNews(); scrollTop(); } });
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-close-2').addEventListener('click', closeModal);
+  document.getElementById('news-modal').addEventListener('click', e => { if(e.target===document.getElementById('news-modal')) closeModal(); });
+})();
+
+function doSearch() {
+  const q = document.getElementById('search-q').value.toLowerCase().trim();
+  filtered = q ? allNews.filter(n => (n.title+n.content+n.author).toLowerCase().includes(q)) : allNews;
+  page = 1; renderNews();
+}
+
+function scrollTop() { window.scrollTo({top: document.getElementById('news-grid').offsetTop - 100, behavior:'smooth'}); }
+
+function renderNews() {
+  const grid = document.getElementById('pag-info');
+  const pag  = document.getElementById('pag');
+  const total = filtered.length;
+  const pages = Math.ceil(total / PER_PAGE);
+  const slice = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+  const el    = document.getElementById('news-grid');
+
+  // Update nav buttons
+  document.getElementById('prev-btn').disabled = page===1;
+  document.getElementById('next-btn').disabled = page===pages||pages===0;
+
+  if (!slice.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><h3>Berita tidak ditemukan</h3></div>';
+    pag.innerHTML=''; return;
+  }
+
+  el.innerHTML = slice.map(n => {
+    const date = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+    const excerpt = (n.content||'').replace(/<[^>]*>/g,'').substring(0,130)+'…';
+    const img = n.thumbnail_url
+      ? `<img class="news-card-img" data-src="${n.thumbnail_url}" src="" alt="${n.title}" loading="lazy" style="background:var(--gray-5)">`
+      : `<div class="news-card-img-ph">📰</div>`;
+    return `<article class="news-card" style="cursor:pointer" onclick="openModalById('${n.id}')">
+      ${img}
+      <div class="news-card-body">
+        <div class="news-card-meta"><span class="news-card-date">${date}</span>${n.author?`<span class="news-card-author">oleh ${n.author}</span>`:''}</div>
+        <div class="news-card-title">${n.title}</div>
+        <div class="news-card-excerpt">${excerpt}</div>
+        <div class="news-card-read">Baca selengkapnya →</div>
+      </div>
+    </article>`;
+  }).join('');
+  SHELL.initLazyImages();
+
+  // Pagination
+  pag.innerHTML='';
+  if(pages>1){
+    const mk = (label,pg,disabled,active) => {
+      const b=document.createElement('button');
+      b.className='pg-btn'+(active?' active':'');
+      b.textContent=label; b.disabled=disabled;
+      b.addEventListener('click',()=>{page=pg;renderNews();scrollTop();});
+      pag.appendChild(b);
+    };
+    mk('‹',page-1,page===1);
+    for(let i=1;i<=pages;i++) mk(i,i,false,i===page);
+    mk('›',page+1,page===pages);
+  }
+}
+
+function openModalById(id) { const n=allNews.find(x=>x.id===id); if(n) openModal(n); }
+
+function openModal(n) {
+  document.getElementById('m-title').textContent = n.title;
+  document.getElementById('m-date').textContent  = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('m-author').textContent = n.author ? 'oleh ' + n.author : '';
+  const imgWrap = document.getElementById('m-img-wrap');
+  imgWrap.innerHTML = n.thumbnail_url
+    ? `<img src="${n.thumbnail_url}" alt="${n.title}" style="width:100%;max-height:340px;object-fit:cover"/>`
+    : '';
+  const cnt = document.getElementById('m-content');
+  const raw = n.content || '';
+  cnt.innerHTML = raw.startsWith('<') ? raw : raw.split('\n').map(l=>l?`<p>${l}</p>`:'').join('');
+  document.getElementById('news-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+  history.replaceState(null,'',`?id=${n.id}`);
+}
+
+function closeModal() {
+  document.getElementById('news-modal').classList.remove('open');
+  document.body.style.overflow='';
+  history.replaceState(null,'',window.location.pathname);
+}
+</script>
+</body>
+</html>

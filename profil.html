@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="page-title-meta" id="page-title-meta" content="Profil & Struktur"/>
+  <title>Profil & Struktur</title>
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+<div id="app">
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="breadcrumb"><a href="index.html">Beranda</a><span class="sep">›</span><span>Profil & Struktur</span></div>
+    <h1>Profil & Struktur Organisasi</h1>
+    <p>Visi, misi, dan jajaran pejabat lembaga</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+
+    <!-- Visi Misi -->
+    <div style="margin-bottom:3.5rem">
+      <div style="margin-bottom:1.5rem">
+        <span class="section-label">Landasan Kerja</span>
+        <h2 class="section-title">Visi & Misi</h2>
+        <div class="gold-line"></div>
+      </div>
+      <div class="card" style="padding:2rem 2.5rem;border-left:4px solid var(--gold)">
+        <div id="visi-misi-content" class="rich-content">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter + All Staff -->
+    <div style="margin-bottom:1.5rem">
+      <span class="section-label">Sumber Daya Manusia</span>
+      <h2 class="section-title">Seluruh Pegawai</h2>
+      <div class="gold-line"></div>
+    </div>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem" id="staff-filter">
+      <button class="tab-btn active" data-filter="all">Semua</button>
+    </div>
+
+    <div class="staff-grid" id="staff-grid">
+      <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+    <div class="pagination" id="staff-pag"></div>
+
+  </div>
+</section>
+
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/shell.js"></script>
+<script>
+const PER_PAGE = 12;
+let allStaff = [], filtered = [], page = 1;
+
+(async () => {
+  await SHELL.init('profil');
+
+  // Visi misi
+  const { data: pc } = await sb.from('page_contents').select('body_text').eq('page_name','visi-misi').single();
+  const vmEl = document.getElementById('visi-misi-content');
+  vmEl.innerHTML = pc?.body_text || '<p style="color:var(--gray-2);font-style:italic">Konten visi-misi belum diatur oleh admin.</p>';
+
+  // Staff
+  const { data } = await sb.from('staff_hierarchy').select('*').order('order_priority');
+  allStaff = data || [];
+
+  // Build filter buttons from unique positions
+  const positions = [...new Set(allStaff.map(s => s.position))];
+  const filterEl  = document.getElementById('staff-filter');
+  positions.forEach(pos => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn'; btn.dataset.filter = pos; btn.textContent = pos;
+    filterEl.appendChild(btn);
+  });
+  filterEl.addEventListener('click', e => {
+    const btn = e.target.closest('.tab-btn'); if (!btn) return;
+    filterEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filtered = btn.dataset.filter === 'all' ? allStaff : allStaff.filter(s => s.position === btn.dataset.filter);
+    page = 1; renderStaff();
+  });
+
+  filtered = allStaff;
+  renderStaff();
+})();
+
+function renderStaff() {
+  const grid = document.getElementById('staff-grid');
+  const pag  = document.getElementById('staff-pag');
+  const total = filtered.length;
+  const pages = Math.ceil(total / PER_PAGE);
+  const slice = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  if (!slice.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3>Belum ada data</h3></div>';
+    pag.innerHTML  = '';
+    return;
+  }
+  grid.innerHTML = slice.map(s => {
+    const init = s.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const img  = s.image_url
+      ? `<img class="staff-card-img" data-src="${s.image_url}" src="" alt="${s.name}" loading="lazy"/>`
+      : `<div class="staff-card-initials">${init}</div>`;
+    return `<div class="staff-card">${img}<div class="staff-card-body"><div class="staff-card-name">${s.name}</div><div class="staff-card-pos">${s.position}</div></div></div>`;
+  }).join('');
+  SHELL.initLazyImages();
+
+  // Pagination
+  pag.innerHTML = '';
+  if (pages > 1) {
+    const addBtn = (label, pg, disabled=false, active=false) => {
+      const b = document.createElement('button');
+      b.className = 'pg-btn' + (active?' active':'');
+      b.textContent = label; b.disabled = disabled;
+      b.addEventListener('click', () => { page = pg; renderStaff(); window.scrollTo({top:0,behavior:'smooth'}); });
+      pag.appendChild(b);
+    };
+    addBtn('‹', page-1, page===1);
+    for (let i=1;i<=pages;i++) addBtn(i, i, false, i===page);
+    addBtn('›', page+1, page===pages);
+  }
+}
+</script>
+</body>
+</html>
