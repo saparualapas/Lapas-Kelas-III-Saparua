@@ -40,6 +40,7 @@ const SHELL = {
     const navLinks = links.map(l =>
       `<li><a href="${l.href}.html" class="nav-link${activePage===l.key?' active':''}" data-key="${l.key}">${l.label}</a></li>`
     ).join('');
+    // Admin link shown once at end of navbar only
     const logoSrc = settings.logo_url || '';
     const name    = settings.app_name || '';
     const tagline = settings.app_tagline || '';
@@ -47,7 +48,7 @@ const SHELL = {
     return `
     <nav class="navbar" id="navbar">
       <div class="navbar-brand">
-        ${logoSrc ? `<img src="${logoSrc}" alt="Logo" class="navbar-logo" loading="lazy"/>` : `<span style="font-size:1.8rem;line-height:1">🏛️</span>`}
+        ${logoSrc ? `<img src="${logoSrc}" alt="Logo" class="navbar-logo" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><span class="navbar-logo" style="display:none;align-items:center;justify-content:center;font-size:1.5rem;background:var(--navy-2)">🏛️</span>` : `<span class="navbar-logo" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:var(--navy-2)">🏛️</span>`}
         <div class="brand-text">
           <span class="brand-name" id="nav-name">${name}</span>
           <span class="brand-tagline" id="nav-tagline">${tagline}</span>
@@ -80,7 +81,7 @@ const SHELL = {
       <div class="footer-container">
         <div class="footer-brand">
           <div class="footer-logo-wrap">
-            ${settings.logo_url ? `<img src="${settings.logo_url}" alt="Logo" class="footer-logo" loading="lazy"/>` : `<span style="font-size:2.5rem;line-height:1">🏛️</span>`}
+            ${settings.logo_url ? `<img src="${settings.logo_url}" alt="Logo" class="footer-logo" loading="lazy" onerror="this.style.display='none'"/>` : `<span style="font-size:2rem">🏛️</span>`}
           </div>
           <h3 class="footer-name">${name}</h3>
           ${addr  ? `<p class="footer-info">📍 ${addr}</p>` : ''}
@@ -140,7 +141,18 @@ const SHELL = {
     const splashFill = document.getElementById('splash-fill');
     if (splashName) splashName.textContent = settings.app_name || '';
     if (splashSub)  splashSub.textContent  = settings.app_tagline || '';
-    if (splashLogo && settings.logo_url) splashLogo.src = settings.logo_url;
+    if (splashLogo) {
+    if (settings.logo_url) {
+      splashLogo.src = settings.logo_url;
+    } else {
+      // Show icon placeholder if no logo yet
+      splashLogo.style.display = 'none';
+      const iconEl = document.createElement('span');
+      iconEl.textContent = '🏛️';
+      iconEl.style.cssText = 'font-size:2.8rem;line-height:1';
+      splashLogo.parentNode.insertBefore(iconEl, splashLogo);
+    }
+  }
 
     // Animate progress bar
     let pct = 0;
@@ -154,6 +166,20 @@ const SHELL = {
     if (app) {
       app.insertAdjacentHTML('beforebegin', this.navbarHTML(settings, activePage));
       app.insertAdjacentHTML('afterend',    this.footerHTML(settings));
+    // Add overlay for mobile nav close
+    if (!document.getElementById('nav-overlay')) {
+      const ov = document.createElement('div');
+      ov.id = 'nav-overlay';
+      ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:899;background:rgba(0,0,0,.45)';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', () => {
+        const nav = document.getElementById('navbar-nav');
+        const ham = document.getElementById('hamburger');
+        if (nav) nav.classList.remove('open');
+        if (ham) ham.classList.remove('open');
+        ov.style.display = 'none';
+      });
+    }
     }
 
     // Set document title
@@ -169,6 +195,8 @@ const SHELL = {
       ham.addEventListener('click', () => {
         nav.classList.toggle('open');
         ham.classList.toggle('open');
+        const ov = document.getElementById('nav-overlay');
+        if (ov) ov.style.display = nav.classList.contains('open') ? 'block' : 'none';
       });
     }
 

@@ -102,7 +102,7 @@ function renderStaff() {
   const slice = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
 
   if (!slice.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3 style="color:var(--gray-3)">Belum ada data pegawai</h3></div>';
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3 style="color:var(--gray-3)">Belum ada data</h3></div>';
     pag.innerHTML  = '';
     return;
   }

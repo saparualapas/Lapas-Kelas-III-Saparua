@@ -9,10 +9,19 @@
 <body style="background:#F0F2F5;visibility:hidden">
 <div class="admin-layout">
 
+<!-- ════ ADMIN SPLASH ══════════════════════════════════════ -->
+<div id="admin-splash">
+  <div class="admin-splash-inner">
+    <div class="admin-splash-ring" id="admin-splash-icon">🏛️</div>
+    <div class="admin-splash-text" id="admin-splash-name">Dashboard Admin</div>
+    <div class="admin-splash-sub" id="admin-splash-sub">Memuat...</div>
+  </div>
+</div>
+
 <!-- ════ SIDEBAR ════════════════════════════════════════════ -->
 <aside class="admin-sidebar" id="sidebar">
   <div class="sb-brand">
-    <span id="sb-logo-wrap" style="font-size:1.6rem;line-height:1;display:flex;align-items:center">🏛️</span>
+    <span id="sb-logo-wrap" style="font-size:1.5rem;display:flex;align-items:center">🏛️</span>
     <div><div class="sb-name" id="sb-name">Lapas</div><div class="sb-sub">Admin Dashboard</div></div>
   </div>
   <nav class="sb-nav" id="sb-nav">
@@ -34,6 +43,8 @@
     <button class="btn-logout" onclick="doLogout()">🚪 Keluar</button>
   </div>
 </aside>
+<!-- Overlay backdrop for mobile sidebar -->
+<div class="sb-overlay" id="sb-overlay"></div>
 
 <!-- ════ MAIN ════════════════════════════════════════════════ -->
 <div class="admin-main">
@@ -272,34 +283,58 @@
 // AUTH GUARD — must be first
 // ══════════════════════════════════════════════════════════
 let currentUser = null;
+
+function hideAdminSplash() {
+  const s = document.getElementById('admin-splash');
+  if (s) { s.classList.add('out'); setTimeout(() => s.remove(), 600); }
+}
+
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { window.location.replace('login.html'); return; }
 
-  // Tampilkan body hanya setelah auth terkonfirmasi — cegah flash
+  // Auth OK — tampilkan body
   document.body.style.visibility = 'visible';
   currentUser = session.user;
   document.getElementById('topbar-email').textContent = currentUser.email;
   document.getElementById('sb-email').textContent     = currentUser.email;
   document.getElementById('prof-email').value         = currentUser.email;
 
-  // Restore panel aktif dari URL hash (persist on refresh)
-  const hash = window.location.hash.replace('#', '');
-  const validPanels = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
-  if (hash && validPanels.includes(hash)) {
-    document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    const navItem = document.querySelector(`.sb-item[data-panel="${hash}"]`);
-    const panelEl = document.getElementById('panel-' + hash);
-    if (navItem) navItem.classList.add('active');
-    if (panelEl) panelEl.classList.add('active');
-    if (panelLoaders[hash]) panelLoaders[hash]();
-    const topbarEl = document.getElementById('topbar-title');
-    if (topbarEl && navItem) topbarEl.textContent = navItem.textContent.trim();
+  // Update splash branding
+  const { data: brd } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','app_tagline','logo_url']);
+  const bs = {}; (brd||[]).forEach(r=>bs[r.key_name]=r.value_text);
+  const splashName = document.getElementById('admin-splash-name');
+  const splashSub  = document.getElementById('admin-splash-sub');
+  const splashIcon = document.getElementById('admin-splash-icon');
+  if (splashName && bs.app_name) splashName.textContent = bs.app_name;
+  if (splashSub)  splashSub.textContent = 'Dashboard Admin';
+  if (splashIcon && bs.logo_url) {
+    splashIcon.innerHTML = `<img src="${bs.logo_url}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)" onerror="this.parentElement.textContent='🏛️'"/>`;
   }
 
+  // Restore panel aktif dari URL hash
+  const hash = window.location.hash.replace('#','');
+  const validPanels = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
+  if (hash && validPanels.includes(hash)) {
+    document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    const navItem = document.querySelector(`.sb-item[data-panel="${hash}"]`);
+    const panelEl = document.getElementById('panel-'+hash);
+    if (navItem) { navItem.classList.add('active'); document.getElementById('topbar-title').textContent = navItem.textContent.trim(); }
+    if (panelEl) panelEl.classList.add('active');
+    if (panelLoaders[hash]) panelLoaders[hash]();
+  }
+
+  // Branding sidebar
+  if (bs.app_name) { document.getElementById('sb-name').textContent = bs.app_name; document.title = `Dashboard — ${bs.app_name}`; }
+  if (bs.logo_url) {
+    const wrap = document.getElementById('sb-logo-wrap');
+    if (wrap) wrap.outerHTML = `<img id="sb-logo" src="${bs.logo_url}" alt="Logo" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)" onerror="this.outerHTML='<span style=\'font-size:1.5rem\'>🏛️</span>'"/>`;
+  }
+
+  await new Promise(r => setTimeout(r, 500));
+  hideAdminSplash();
   loadStats();
-  loadSidebarBranding();
 })();
 
 // ══════════════════════════════════════════════════════════
@@ -333,16 +368,27 @@ document.getElementById('sb-nav').addEventListener('click', e => {
   document.getElementById('panel-'+panel).classList.add('active');
   document.getElementById('topbar-title').textContent = item.textContent.trim();
   if(panelLoaders[panel]) panelLoaders[panel]();
-  // Simpan panel aktif di hash agar refresh tetap di halaman yang sama
-  window.location.hash = panel;
-  // Mobile: close sidebar
-  if(window.innerWidth<768) document.getElementById('sidebar').classList.remove('open');
+  // Simpan panel di hash — agar refresh tetap di panel sama
+  history.replaceState(null, '', '#' + panel);
+  // Mobile: tutup sidebar + overlay
+  if(window.innerWidth<768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sb-overlay').classList.remove('show');
+  }
 });
 
 // Mobile sidebar toggle
 const sbToggle = document.getElementById('sb-toggle');
+const sbOverlay = document.getElementById('sb-overlay');
 if(window.innerWidth<768) sbToggle.style.display='block';
-sbToggle.addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
+sbToggle.addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+  sbOverlay.classList.toggle('show');
+});
+sbOverlay.addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+  sbOverlay.classList.remove('show');
+});
 
 // Click outside modal
 document.querySelectorAll('.modal-overlay').forEach(o=>{
@@ -402,13 +448,7 @@ let rteMap = {}; // Store RTE instances
 // SIDEBAR BRANDING
 // ══════════════════════════════════════════════════════════
 async function loadSidebarBranding() {
-  const { data } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
-  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
-  if(s.app_name) { document.getElementById('sb-name').textContent=s.app_name; document.title=`Dashboard — ${s.app_name}`; }
-  if(s.logo_url) {
-    const wrap = document.getElementById('sb-logo-wrap');
-    if(wrap) wrap.outerHTML = `<img id="sb-logo" src="${s.logo_url}" alt="Logo" style="width:36px;height:36px;border-radius:6px;object-fit:cover"/>`;
-  }
+  // Already loaded in auth guard — no-op kept for compatibility
 }
 
 // ══════════════════════════════════════════════════════════
@@ -458,7 +498,7 @@ async function loadSambutan() {
   const { data } = await sb.from('sambutan').select('*').limit(1).single();
   if(data) {
     document.getElementById('smb-name').value     = data.name||'';
-    document.getElementById('smb-position').value = data.position||'Kepala Lembaga Pemasyarakatan';
+    document.getElementById('smb-position').value = data.position||'';
     document.getElementById('smb-title').value    = data.title||'';
     document.getElementById('smb-photo').value    = data.photo_url||'';
     smbRTE.setHTML(data.content||'');

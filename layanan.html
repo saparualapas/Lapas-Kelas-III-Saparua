@@ -96,13 +96,12 @@
     const addr  = settings.office_address;
     const phone = settings.office_phone;
     const email = settings.office_email;
-    document.getElementById('content-kontak').innerHTML = `
-      ${addr  ? `<h3>📍 Alamat</h3><p>${addr}</p>` : ''}
-      ${phone ? `<h3>📞 Telepon</h3><p>${phone}</p>` : ''}
-      ${email ? `<h3>✉️ Email</h3><p>${email}</p>` : ''}
-      <h3>⏰ Jam Pelayanan</h3>
-      <p>Senin — Jumat : 08.00 — 16.00 WIT<br/>Sabtu : 08.00 — 12.00 WIT<br/>Minggu & Libur : Tutup</p>
-      ${!addr && !phone && !email ? '<p style="color:var(--gray-3);font-style:italic">Belum ada data kontak.</p>' : ''}`;
+    document.getElementById('content-kontak').innerHTML =
+      (addr  ? `<h3>📍 Alamat</h3><p>${addr}</p>` : '') +
+      (phone ? `<h3>📞 Telepon</h3><p>${phone}</p>` : '') +
+      (email ? `<h3>✉️ Email</h3><p>${email}</p>` : '') +
+      `<h3>⏰ Jam Pelayanan</h3><p>Senin — Jumat : 08.00 — 16.00 WIT<br/>Sabtu : 08.00 — 12.00 WIT<br/>Minggu & Libur : Tutup</p>` +
+      (!addr && !phone && !email ? '<p style="color:var(--gray-3);font-style:italic">Belum ada data kontak.</p>' : '');
   }
 
   // Tabs

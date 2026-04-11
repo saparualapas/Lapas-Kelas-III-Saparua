@@ -22,7 +22,6 @@
     <div class="home-hero-btns">
       <a href="#" id="hero-visit" class="btn btn-gold btn-lg">📋 Daftar Kunjungan</a>
       <a href="layanan.html" class="btn btn-outline-white btn-lg">Lihat Layanan</a>
-      <a href="admin/login.html" class="btn btn-outline-white btn-lg" style="font-size:.82rem;padding:.7rem 1.1rem;">🔐 Login Admin</a>
     </div>
   </div>
   <div class="home-hero-image" id="hero-img-wrap">
@@ -67,7 +66,7 @@
 <section class="sambutan-section" id="sambutan-section">
   <div class="sambutan-inner">
     <div class="sambutan-photo-wrap" id="sambutan-photo-wrap">
-      <div class="sambutan-photo-ph" id="sambutan-photo-ph" style="font-size:3rem;display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--gray-3)">👤</div>
+      <div class="sambutan-photo-ph" id="sambutan-photo-ph"></div>
       <div class="sambutan-badge" id="sambutan-badge"></div>
     </div>
     <div class="sambutan-text-wrap">
@@ -166,20 +165,20 @@
     document.getElementById('sambutan-badge').textContent = smb.position || '';
     if (smb.title)   document.getElementById('sambutan-title').textContent = smb.title;
     if (smb.content) document.getElementById('sambutan-quote').innerHTML   = `<div class="rich-content">${smb.content}</div>`;
-    else             document.getElementById('sambutan-quote').innerHTML   = '<p style="color:var(--gray-3);font-style:italic">Belum ada sambutan.</p>';
+    else             document.getElementById('sambutan-quote').innerHTML = '<p style="color:var(--gray-3);font-style:italic">Belum ada teks sambutan.</p>';
     if (smb.photo_url) {
       document.getElementById('sambutan-photo-ph').outerHTML =
         `<img class="sambutan-photo" data-src="${smb.photo_url}" src="" alt="${smb.name}" loading="lazy"/>`;
     }
   } else {
-    document.getElementById('sambutan-quote').innerHTML = '<p style="color:var(--gray-3);font-style:italic">Belum ada data sambutan.</p>';
+    document.getElementById('sambutan-quote').innerHTML = '<p style="color:var(--gray-3);font-style:italic">Belum ada data.</p>';
   }
 
   // News slider
   const slider = document.getElementById('news-slider');
   const { data: news } = await sb.from('news_posts').select('id,title,thumbnail_url,author,created_at,content').order('created_at',{ascending:false}).limit(8);
   if (!news?.length) {
-    slider.innerHTML = '<div class="empty-state" style="color:white;width:100%"><div class="empty-icon">📭</div><p style="opacity:.6">Belum ada berita.</p></div>';
+    slider.innerHTML = '<div class="empty-state" style="color:white;width:100%"><div class="empty-icon">📭</div><p style="opacity:.5">Belum ada berita.</p></div>';
   } else {
     slider.innerHTML = news.map(n => {
       const date = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
@@ -211,7 +210,7 @@
   const { data: staff } = await sb.from('staff_hierarchy').select('*').order('order_priority').limit(4);
   const grid = document.getElementById('staff-preview');
   if (!staff?.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><p style="color:var(--gray-3)">Belum ada data pegawai.</p></div>';
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><p style="color:var(--gray-3)">Belum ada data.</p></div>';
   } else {
     grid.innerHTML = staff.map(s => staffCard(s)).join('');
     SHELL.initLazyImages();
