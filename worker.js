@@ -2,16 +2,40 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // Route upload
     if (url.pathname === '/api/upload') {
       return handleUpload(request, env);
     }
 
+    // Route serve foto dari R2
+    if (url.pathname.startsWith('/media/')) {
+      return handleMedia(request, env, url);
+    }
+
+    // Static assets
     return env.ASSETS.fetch(request);
   }
 };
 
+// ── Serve foto dari R2 ──────────────────────────────────
+async function handleMedia(request, env, url) {
+  // Ambil key dari URL, contoh: /media/uploads/foto.jpg → uploads/foto.jpg
+  const key = url.pathname.replace('/media/', '');
+  if (!key) return new Response('Not found', { status: 404 });
+
+  const object = await env.BUCKET.get(key);
+  if (!object) return new Response('Not found', { status: 404 });
+
+  const headers = new Headers();
+  headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+  headers.set('Cache-Control', 'public, max-age=31536000');
+  headers.set('Access-Control-Allow-Origin', '*');
+
+  return new Response(object.body, { headers });
+}
+
+// ── Upload foto ke R2 ───────────────────────────────────
 async function handleUpload(request, env) {
-  // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -22,38 +46,27 @@ async function handleUpload(request, env) {
     });
   }
 
-  if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405);
-  }
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  // Cek auth
   const auth = request.headers.get('Authorization') || '';
-  if (!auth.startsWith('Bearer ')) {
-    return json({ error: 'Unauthorized' }, 401);
-  }
+  if (!auth.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
 
   try {
-    // Ambil file dari form data
     const formData = await request.formData();
     const file = formData.get('file');
 
     if (!file) return json({ error: 'File tidak ditemukan' }, 400);
+    if (!file.type.startsWith('image/')) return json({ error: 'Hanya file gambar' }, 400);
 
-    // Validasi tipe
-    if (!file.type.startsWith('image/')) {
-      return json({ error: 'Hanya file gambar' }, 400);
-    }
-
-    // Buat nama file unik
     const ext = file.name.split('.').pop().toLowerCase();
     const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    // Upload langsung ke R2 via binding — tidak butuh aws4fetch!
     await env.BUCKET.put(key, file.stream(), {
       httpMetadata: { contentType: file.type }
     });
 
-    const publicUrl = `${env.R2_PUBLIC_URL}/${key}`;
+    // URL pakai domain Worker sendiri, bukan r2.dev
+    const publicUrl = `${env.WORKER_URL}/media/${key}`;
 
     return json({ success: true, publicUrl, key });
 
