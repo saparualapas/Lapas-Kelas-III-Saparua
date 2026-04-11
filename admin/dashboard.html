@@ -640,9 +640,6 @@ async function saveNews() {
 
 }
 
-// ══════════════════════════════════════════════════════════
-// UPLOAD ke R2 via Worker
-// ══════════════════════════════════════════════════════════
 document.getElementById('media-file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -660,22 +657,20 @@ document.getElementById('media-file-input').addEventListener('change', async (e)
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { toast('Sesi expired, silakan login ulang.', 'error'); return; }
 
-    const resp = await fetch(
-      `/api/upload-url?filename=${encodeURIComponent(file.name)}&type=${encodeURIComponent(file.type)}`,
-      { headers: { 'Authorization': `Bearer ${session.access_token}` } }
-    );
-    if (!resp.ok) throw new Error('Gagal mendapat upload URL');
-    const { uploadUrl, publicUrl } = await resp.json();
+    const formData = new FormData();
+    formData.append('file', file);
 
-    const up = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type }
+    const resp = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` },
+      body: formData
     });
-    if (!up.ok) throw new Error('Upload ke R2 gagal');
 
-    await navigator.clipboard.writeText(publicUrl);
-    toast(`✅ Berhasil! URL disalin ke clipboard`);
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Upload gagal');
+
+    await navigator.clipboard.writeText(result.publicUrl);
+    toast('✅ Berhasil! URL disalin ke clipboard');
     loadMedia();
 
   } catch (err) {
@@ -684,6 +679,9 @@ document.getElementById('media-file-input').addEventListener('change', async (e)
 
   e.target.value = '';
 });
+
+
+
 
 async function deleteNews(id) {
   if(!confirm('Hapus berita ini?')) return;
