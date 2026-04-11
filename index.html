@@ -17,11 +17,12 @@
 <section class="home-hero" id="hero-section">
   <div class="home-hero-content">
     <div class="home-hero-badge">🏛️ Website Resmi</div>
-    <h1 id="hero-title"><span id="hero-appname"></span></h1>
-    <p id="hero-desc"></p>
+    <h1 id="hero-title">Selamat Datang di<br/><span id="hero-appname">Lembaga Pemasyarakatan</span></h1>
+    <p id="hero-desc">Memuat...</p>
     <div class="home-hero-btns">
       <a href="#" id="hero-visit" class="btn btn-gold btn-lg">📋 Daftar Kunjungan</a>
       <a href="layanan.html" class="btn btn-outline-white btn-lg">Lihat Layanan</a>
+      <a href="admin/login.html" class="btn btn-outline-white btn-lg" style="font-size:.82rem;padding:.7rem 1.1rem;">🔐 Login Admin</a>
     </div>
   </div>
   <div class="home-hero-image" id="hero-img-wrap">
@@ -66,14 +67,14 @@
 <section class="sambutan-section" id="sambutan-section">
   <div class="sambutan-inner">
     <div class="sambutan-photo-wrap" id="sambutan-photo-wrap">
-      <div class="sambutan-photo-ph" id="sambutan-photo-ph"></div>
-      <div class="sambutan-badge" id="sambutan-badge"></div>
+      <div class="sambutan-photo-ph" id="sambutan-photo-ph">👤</div>
+      <div class="sambutan-badge" id="sambutan-badge">Kepala Lapas</div>
     </div>
     <div class="sambutan-text-wrap">
       <div class="sambutan-label">Sambutan</div>
       <h2 class="sambutan-title" id="sambutan-title">Sambutan Kepala Lapas</h2>
-      <div class="sambutan-name" id="sambutan-name"></div>
-      <div class="sambutan-pos"  id="sambutan-pos"></div>
+      <div class="sambutan-name" id="sambutan-name">—</div>
+      <div class="sambutan-pos"  id="sambutan-pos">Kepala Lembaga Pemasyarakatan</div>
       <blockquote class="sambutan-quote" id="sambutan-quote">
         <div class="loading-center"><div class="spinner" style="border-top-color:var(--gold-2)"></div></div>
       </blockquote>
@@ -96,9 +97,9 @@
         <div class="loading-center" style="width:100%"><div class="spinner" style="border-top-color:var(--gold-2)"></div></div>
       </div>
     </div>
-    <!-- Nav arrows -->
-    <div style="display:flex; justify-content:center; gap:.75rem; margin-top:1.75rem">
-      <button class="btn btn-outline-white btn-sm" id="slide-prev">‹ Sebelumnya</button>
+    <!-- Nav arrows — ditampilkan hanya jika ada lebih dari 3 berita -->
+    <div id="slide-nav" style="display:none; justify-content:center; gap:.75rem; margin-top:1.75rem">
+      <button class="btn btn-outline-white btn-sm" id="slide-prev" disabled>‹ Sebelumnya</button>
       <button class="btn btn-outline-white btn-sm" id="slide-next">Berikutnya ›</button>
     </div>
     <div style="text-align:center; margin-top:1.5rem">
@@ -133,7 +134,7 @@
   // Hero
   const vLink = settings.external_visit_link || '#';
   document.getElementById('hero-appname').textContent = settings.app_name || '';
-  document.getElementById('hero-desc').textContent = settings.hero_description || '';
+  document.getElementById('hero-desc').textContent     = settings.hero_description || '';
   document.getElementById('hero-visit').href = vLink;
   document.getElementById('ql-visit').href   = vLink;
 
@@ -165,20 +166,20 @@
     document.getElementById('sambutan-badge').textContent = smb.position || '';
     if (smb.title)   document.getElementById('sambutan-title').textContent = smb.title;
     if (smb.content) document.getElementById('sambutan-quote').innerHTML   = `<div class="rich-content">${smb.content}</div>`;
-    else             document.getElementById('sambutan-quote').innerHTML = '<p style="color:var(--gray-3);font-style:italic">Belum ada teks sambutan.</p>';
+    else             document.getElementById('sambutan-quote').innerHTML   = '<p style="color:var(--gray-3);font-style:italic">Belum ada sambutan.</p>';
     if (smb.photo_url) {
       document.getElementById('sambutan-photo-ph').outerHTML =
         `<img class="sambutan-photo" data-src="${smb.photo_url}" src="" alt="${smb.name}" loading="lazy"/>`;
     }
   } else {
-    document.getElementById('sambutan-quote').innerHTML = '<p style="color:var(--gray-3);font-style:italic">Belum ada data.</p>';
+    document.getElementById('sambutan-quote').innerHTML   = '<p style="color:var(--gray-3);font-style:italic">Belum ada data sambutan.</p>';
   }
 
   // News slider
   const slider = document.getElementById('news-slider');
   const { data: news } = await sb.from('news_posts').select('id,title,thumbnail_url,author,created_at,content').order('created_at',{ascending:false}).limit(8);
   if (!news?.length) {
-    slider.innerHTML = '<div class="empty-state" style="color:white;width:100%"><div class="empty-icon">📭</div><p style="opacity:.5">Belum ada berita.</p></div>';
+    slider.innerHTML = '<div class="empty-state" style="color:white;width:100%"><div class="empty-icon">📭</div><p style="opacity:.6">Belum ada berita.</p></div>';
   } else {
     slider.innerHTML = news.map(n => {
       const date = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
@@ -198,19 +199,35 @@
     }).join('');
     SHELL.initLazyImages();
 
-    // Slider logic
+    // Slider logic — dinamis, tombol muncul hanya jika ada lebih dari 3 kartu
     let pos = 0;
-    const cardW = 316; // 300 + 16 gap
-    const max   = Math.max(0, news.length - 3);
-    document.getElementById('slide-next').addEventListener('click', () => { pos = Math.min(pos+1, max); slider.style.transform = `translateX(-${pos*cardW}px)`; });
-    document.getElementById('slide-prev').addEventListener('click', () => { pos = Math.max(pos-1, 0);  slider.style.transform = `translateX(-${pos*cardW}px)`; });
+    const cardW     = 316; // 300px lebar + 16px gap
+    const visibleN  = Math.floor((document.getElementById('news-slider-wrap').offsetWidth || 960) / cardW) || 3;
+    const max       = Math.max(0, news.length - visibleN);
+
+    const slideNav  = document.getElementById('slide-nav');
+    const prevBtn   = document.getElementById('slide-prev');
+    const nextBtn   = document.getElementById('slide-next');
+
+    // Tampilkan nav hanya jika ada card yang tersembunyi
+    if (max > 0) slideNav.style.display = 'flex';
+
+    function updateSlider() {
+      slider.style.transform = `translateX(-${pos * cardW}px)`;
+      prevBtn.disabled = pos <= 0;
+      nextBtn.disabled = pos >= max;
+    }
+
+    nextBtn.addEventListener('click', () => { if (pos < max) { pos++; updateSlider(); } });
+    prevBtn.addEventListener('click', () => { if (pos > 0)   { pos--; updateSlider(); } });
+    updateSlider();
   }
 
   // Staff preview (up to 4)
   const { data: staff } = await sb.from('staff_hierarchy').select('*').order('order_priority').limit(4);
   const grid = document.getElementById('staff-preview');
   if (!staff?.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><p style="color:var(--gray-3)">Belum ada data.</p></div>';
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><p style="color:var(--gray-3)">Belum ada data pegawai.</p></div>';
   } else {
     grid.innerHTML = staff.map(s => staffCard(s)).join('');
     SHELL.initLazyImages();
