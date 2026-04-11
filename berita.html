@@ -115,7 +115,7 @@ function renderNews() {
   document.getElementById('next-btn').disabled = page===pages||pages===0;
 
   if (!slice.length) {
-    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><h3>Berita tidak ditemukan</h3></div>';
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><h3 style="color:var(--gray-3)">Belum ada berita</h3></div>';
     pag.innerHTML=''; return;
   }
 

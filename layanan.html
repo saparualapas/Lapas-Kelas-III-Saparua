@@ -83,25 +83,26 @@
   const pc = {};
   (pages||[]).forEach(p => pc[p.page_name] = p.body_text);
 
-  const fallback = name => `<p style="color:var(--gray-2);font-style:italic">Konten "${name}" belum diatur oleh admin.</p>`;
+  const fallback = () => '<p style="color:var(--gray-3);font-style:italic">Belum ada data.</p>';
 
-  document.getElementById('content-kunjungan').innerHTML = pc['alur-kunjungan'] || fallback('Alur Kunjungan');
-  document.getElementById('content-penitipan').innerHTML = pc['alur-penitipan'] || fallback('Alur Penitipan');
-  document.getElementById('content-syarat').innerHTML    = pc['syarat-ketentuan'] || fallback('Syarat & Ketentuan');
+  document.getElementById('content-kunjungan').innerHTML = pc['alur-kunjungan'] || fallback();
+  document.getElementById('content-penitipan').innerHTML = pc['alur-penitipan'] || fallback();
+  document.getElementById('content-syarat').innerHTML    = pc['syarat-ketentuan'] || fallback();
 
   // Kontak — build from settings if no custom content
   if (pc['kontak']) {
     document.getElementById('content-kontak').innerHTML = pc['kontak'];
   } else {
-    const addr  = settings.office_address || '—';
-    const phone = settings.office_phone || '—';
-    const email = settings.office_email || '—';
+    const addr  = settings.office_address;
+    const phone = settings.office_phone;
+    const email = settings.office_email;
     document.getElementById('content-kontak').innerHTML = `
-      <h3>📍 Alamat</h3><p>${addr}</p>
-      <h3>📞 Telepon</h3><p>${phone}</p>
-      <h3>✉️ Email</h3><p>${email}</p>
+      ${addr  ? `<h3>📍 Alamat</h3><p>${addr}</p>` : ''}
+      ${phone ? `<h3>📞 Telepon</h3><p>${phone}</p>` : ''}
+      ${email ? `<h3>✉️ Email</h3><p>${email}</p>` : ''}
       <h3>⏰ Jam Pelayanan</h3>
-      <p>Senin — Jumat : 08.00 — 16.00 WIT<br/>Sabtu : 08.00 — 12.00 WIT<br/>Minggu & Libur : Tutup</p>`;
+      <p>Senin — Jumat : 08.00 — 16.00 WIT<br/>Sabtu : 08.00 — 12.00 WIT<br/>Minggu & Libur : Tutup</p>
+      ${!addr && !phone && !email ? '<p style="color:var(--gray-3);font-style:italic">Belum ada data kontak.</p>' : ''}`;
   }
 
   // Tabs

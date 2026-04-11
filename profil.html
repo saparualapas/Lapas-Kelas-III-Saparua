@@ -68,7 +68,7 @@ let allStaff = [], filtered = [], page = 1;
   // Visi misi
   const { data: pc } = await sb.from('page_contents').select('body_text').eq('page_name','visi-misi').single();
   const vmEl = document.getElementById('visi-misi-content');
-  vmEl.innerHTML = pc?.body_text || '<p style="color:var(--gray-2);font-style:italic">Konten visi-misi belum diatur oleh admin.</p>';
+  vmEl.innerHTML = pc?.body_text || '<p style="color:var(--gray-3);font-style:italic">Belum ada data.</p>';
 
   // Staff
   const { data } = await sb.from('staff_hierarchy').select('*').order('order_priority');
@@ -102,7 +102,7 @@ function renderStaff() {
   const slice = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
 
   if (!slice.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3>Belum ada data</h3></div>';
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3 style="color:var(--gray-3)">Belum ada data pegawai</h3></div>';
     pag.innerHTML  = '';
     return;
   }

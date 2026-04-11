@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dashboard Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body style="background:#F0F2F5;visibility:hidden">
+<div class="admin-layout">
+
+<!-- ════ SIDEBAR ════════════════════════════════════════════ -->
+<aside class="admin-sidebar" id="sidebar">
+  <div class="sb-brand">
+    <span id="sb-logo-wrap" style="font-size:1.6rem;line-height:1;display:flex;align-items:center">🏛️</span>
+    <div><div class="sb-name" id="sb-name">Lapas</div><div class="sb-sub">Admin Dashboard</div></div>
+  </div>
+  <nav class="sb-nav" id="sb-nav">
+    <div class="sb-section">Utama</div>
+    <div class="sb-item active" data-panel="dashboard"><span class="icon">📊</span>Dashboard</div>
+    <div class="sb-section">Konten</div>
+    <div class="sb-item" data-panel="sambutan"><span class="icon">🎤</span>Sambutan Kepala</div>
+    <div class="sb-item" data-panel="staff"><span class="icon">👥</span>Manajemen Staff</div>
+    <div class="sb-item" data-panel="news"><span class="icon">📰</span>Berita & Kegiatan</div>
+    <div class="sb-item" data-panel="pages"><span class="icon">📄</span>Konten Halaman</div>
+    <div class="sb-section">Sistem</div>
+    <div class="sb-item" data-panel="settings"><span class="icon">⚙️</span>Global Settings</div>
+    <div class="sb-item" data-panel="media"><span class="icon">🖼️</span>Media Library</div>
+    <div class="sb-item" data-panel="profile"><span class="icon">👤</span>Profil & Password</div>
+    <div class="sb-item" onclick="window.open('../index.html','_blank')"><span class="icon">🌐</span>Lihat Website</div>
+  </nav>
+  <div class="sb-footer">
+    <div style="font-size:.75rem;color:rgba(255,255,255,.3);margin-bottom:.6rem;padding:0 .4rem" id="sb-email"></div>
+    <button class="btn-logout" onclick="doLogout()">🚪 Keluar</button>
+  </div>
+</aside>
+
+<!-- ════ MAIN ════════════════════════════════════════════════ -->
+<div class="admin-main">
+  <div class="admin-topbar">
+    <div style="display:flex;align-items:center;gap:1rem">
+      <button id="sb-toggle" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--navy);display:none">☰</button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+    </div>
+    <div class="topbar-user">Halo, <strong id="topbar-email">Admin</strong></div>
+  </div>
+
+  <div class="admin-content">
+
+    <!-- ── DASHBOARD ─────────────────────────────────────── -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="stats-row" id="stats-row"></div>
+      <div class="alert alert-success" style="margin-bottom:1.5rem">
+        <strong>Selamat datang di Dashboard Admin!</strong> Semua konten website dikelola dari sini.
+      </div>
+      <div style="background:white;border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow)">
+        <h3 style="font-family:var(--ff-display);margin-bottom:1rem;font-size:1.1rem">Panduan Cepat</h3>
+        <ul style="list-style:disc;padding-left:1.25rem;font-size:.875rem;color:var(--gray-2);line-height:2">
+          <li><strong>Sambutan Kepala</strong> — Atur teks sambutan dan foto kepala lapas yang muncul di beranda</li>
+          <li><strong>Manajemen Staff</strong> — Tambah/edit/hapus data pegawai beserta foto</li>
+          <li><strong>Berita & Kegiatan</strong> — Tulis dan kelola artikel berita</li>
+          <li><strong>Konten Halaman</strong> — Edit Visi-Misi, Alur Kunjungan, Syarat, Kontak menggunakan editor visual</li>
+          <li><strong>Global Settings</strong> — Atur nama lapas, logo, alamat, link kunjungan, dan media sosial</li>
+          <li><strong>Media Library</strong> — Salin URL gambar yang sudah diupload ke R2</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ── SAMBUTAN ───────────────────────────────────────── -->
+    <div class="panel" id="panel-sambutan">
+      <div class="sh"><h2>🎤 Sambutan Kepala Lapas</h2><button class="btn btn-gold" onclick="saveSambutan()">💾 Simpan</button></div>
+      <div id="alert-sambutan"></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>👤 Identitas</h3>
+          <div class="form-group"><label class="form-label">Nama Kepala Lapas</label><input id="smb-name" class="form-control" placeholder="Nama lengkap"/></div>
+          <div class="form-group"><label class="form-label">Jabatan</label><input id="smb-position" class="form-control" placeholder="Kepala Lapas Kelas III Saparua"/></div>
+          <div class="form-group"><label class="form-label">Judul Sambutan</label><input id="smb-title" class="form-control" placeholder="Sambutan Kepala Lapas"/></div>
+          <div class="form-group">
+            <label class="form-label">URL Foto (dari R2)</label>
+            <input id="smb-photo" class="form-control" placeholder="https://pub-xxx.r2.dev/foto-kalapas.jpg"/>
+            <div class="form-hint">Upload foto via Media Library, lalu salin URL-nya ke sini.</div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <h3>📝 Isi Sambutan</h3>
+          <div class="form-group">
+            <label class="form-label">Teks Sambutan</label>
+            <div id="smb-content-rte"></div>
+            <div class="form-hint">Tulis teks sambutan yang akan tampil di beranda website.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STAFF ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-staff">
+      <div class="sh"><h2>👥 Manajemen Staff</h2><button class="btn btn-primary" onclick="openStaffModal()">+ Tambah Staff</button></div>
+      <div id="alert-staff"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Prioritas</th><th>Aksi</th></tr></thead>
+          <tbody id="staff-tbody"><tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="staff-pag"></div>
+    </div>
+
+    <!-- ── NEWS ──────────────────────────────────────────── -->
+    <div class="panel" id="panel-news">
+      <div class="sh"><h2>📰 Berita & Kegiatan</h2><button class="btn btn-primary" onclick="openNewsModal()">+ Tambah Berita</button></div>
+      <div id="alert-news"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Thumbnail</th><th>Judul</th><th>Penulis</th><th>Tanggal</th><th>Aksi</th></tr></thead>
+          <tbody id="news-tbody"><tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="news-pag"></div>
+    </div>
+
+    <!-- ── PAGES ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-pages">
+      <div class="sh"><h2>📄 Konten Halaman Statis</h2></div>
+      <div id="alert-pages"></div>
+      <div style="display:flex;flex-direction:column;gap:1rem" id="pages-list">
+        <div class="loading-center"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS ───────────────────────────────────────── -->
+    <div class="panel" id="panel-settings">
+      <div class="sh"><h2>⚙️ Global Settings</h2><button class="btn btn-gold" onclick="saveSettings()">💾 Simpan Semua</button></div>
+      <div id="alert-settings"></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>🏛️ Identitas Website</h3>
+          <div class="form-group"><label class="form-label">Nama Lapas / Aplikasi</label><input id="cfg-app_name" class="form-control" placeholder="Lapas Kelas III Saparua"/></div>
+          <div class="form-group"><label class="form-label">Tagline</label><input id="cfg-app_tagline" class="form-control" placeholder="Kementerian Hukum dan HAM RI"/></div>
+          <div class="form-group"><label class="form-label">URL Logo</label><input id="cfg-logo_url" class="form-control" placeholder="https://pub-xxx.r2.dev/logo.png"/></div>
+          <div class="form-group"><label class="form-label">URL Foto Hero (halaman beranda, sisi kanan)</label><input id="cfg-hero_image_url" class="form-control" placeholder="https://pub-xxx.r2.dev/gedung.jpg"/></div>
+          <div class="form-group"><label class="form-label">Deskripsi Hero</label><textarea id="cfg-hero_description" class="form-control" rows="3" placeholder="Melayani dengan profesional..."></textarea></div>
+        </div>
+        <div class="settings-card">
+          <h3>📍 Kontak & Alamat</h3>
+          <div class="form-group"><label class="form-label">Alamat Kantor</label><textarea id="cfg-office_address" class="form-control" rows="3" placeholder="Jl. Pemasyarakatan No. 1..."></textarea></div>
+          <div class="form-group"><label class="form-label">Nomor Telepon</label><input id="cfg-office_phone" class="form-control" placeholder="(0911) xxx-xxxx"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input id="cfg-office_email" class="form-control" placeholder="info@lapas.go.id"/></div>
+        </div>
+        <div class="settings-card">
+          <h3>🔗 Integrasi Kunjungan</h3>
+          <div class="form-group"><label class="form-label">Link Web Kunjungan Eksternal</label><input id="cfg-external_visit_link" class="form-control" placeholder="https://kunjungan.lapas.go.id"/><div class="form-hint">Akan muncul di tombol "Daftar Kunjungan" di seluruh website.</div></div>
+        </div>
+        <div class="settings-card">
+          <h3>📱 Media Sosial</h3>
+          <div class="form-group"><label class="form-label">Instagram URL</label><input id="cfg-socmed_instagram" class="form-control" placeholder="https://instagram.com/..."/></div>
+          <div class="form-group"><label class="form-label">Facebook URL</label><input id="cfg-socmed_facebook" class="form-control" placeholder="https://facebook.com/..."/></div>
+          <div class="form-group"><label class="form-label">YouTube URL</label><input id="cfg-socmed_youtube" class="form-control" placeholder="https://youtube.com/..."/></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MEDIA ──────────────────────────────────────────── -->
+    <div class="panel" id="panel-media">
+      <div class="sh">
+        <h2>🖼️ Media Library</h2>
+        <div style="display:flex;gap:.75rem;align-items:center">
+          <input type="file" id="media-file-input" accept="image/*" style="display:none"/>
+          <button class="btn btn-primary" onclick="document.getElementById('media-file-input').click()">📤 Upload ke R2</button>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-bottom:1.25rem">
+        <strong>Cara upload foto:</strong> Upload foto di bucket R2 Anda via Cloudflare Dashboard, lalu refresh halaman ini. Klik thumbnail untuk menyalin URL-nya.
+      </div>
+      <div id="alert-media"></div>
+      <div class="media-grid" id="media-grid"><div class="loading-center"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- ── PROFILE ────────────────────────────────────────── -->
+    <div class="panel" id="panel-profile">
+      <div class="sh"><h2>👤 Profil & Keamanan</h2></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>📧 Ubah Email</h3>
+          <div id="alert-email"></div>
+          <div class="form-group"><label class="form-label">Email Baru</label><input type="email" id="prof-email" class="form-control" placeholder="email@baru.com"/></div>
+          <button class="btn btn-primary" onclick="saveEmail()">Simpan Email</button>
+        </div>
+        <div class="settings-card">
+          <h3>🔑 Ubah Password</h3>
+          <div id="alert-password"></div>
+          <div class="form-group"><label class="form-label">Password Baru</label><input type="password" id="prof-pass1" class="form-control" placeholder="Minimal 6 karakter"/></div>
+          <div class="form-group"><label class="form-label">Konfirmasi Password</label><input type="password" id="prof-pass2" class="form-control" placeholder="Ulangi password baru"/></div>
+          <button class="btn btn-primary" onclick="savePassword()">Simpan Password</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /admin-content -->
+</div><!-- /admin-main -->
+</div><!-- /admin-layout -->
+
+<!-- ════ MODALS ══════════════════════════════════════════════ -->
+
+<!-- Staff Modal -->
+<div class="modal-overlay" id="modal-staff">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="staff-modal-title">Tambah Staff</h3><button class="modal-close" onclick="closeModal('modal-staff')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="staff-id"/>
+      <div class="form-group"><label class="form-label">Nama Lengkap <span class="req">*</span></label><input id="staff-name" class="form-control" placeholder="Nama lengkap pegawai"/></div>
+      <div class="form-group"><label class="form-label">Jabatan <span class="req">*</span></label><input id="staff-position" class="form-control" placeholder="Kepala Lapas, Kasubag Umum..."/></div>
+      <div class="form-group"><label class="form-label">Prioritas Tampil <span style="font-weight:400;color:var(--gray-2)">(angka kecil = paling atas)</span></label><input id="staff-order" class="form-control" type="number" value="99" min="1"/></div>
+      <div class="form-group">
+        <label class="form-label">URL Foto</label>
+        <input id="staff-img-url" class="form-control" placeholder="https://pub-xxx.r2.dev/foto.jpg"/>
+        <div class="form-hint">Salin URL dari Media Library. Kosongkan jika belum ada foto.</div>
+        <img id="staff-img-preview" src="" alt="" style="margin-top:.75rem;max-width:100px;border-radius:8px;display:none"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-staff')">Batal</button>
+      <button class="btn btn-primary" onclick="saveStaff()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- News Modal -->
+<div class="modal-overlay" id="modal-news">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-header"><h3 id="news-modal-title">Tambah Berita</h3><button class="modal-close" onclick="closeModal('modal-news')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="news-id"/>
+      <div class="form-group"><label class="form-label">Judul Berita <span class="req">*</span></label><input id="news-title" class="form-control" placeholder="Judul berita..."/></div>
+      <div class="form-group"><label class="form-label">Penulis</label><input id="news-author" class="form-control" placeholder="Nama penulis atau unit"/></div>
+      <div class="form-group">
+        <label class="form-label">Isi Berita</label>
+        <div id="news-content-rte"></div>
+      </div>
+      <div class="form-group"><label class="form-label">URL Thumbnail</label><input id="news-thumbnail" class="form-control" placeholder="https://pub-xxx.r2.dev/foto.jpg"/><div class="form-hint">Salin URL dari Media Library.</div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-news')">Batal</button>
+      <button class="btn btn-primary" onclick="saveNews()">💾 Simpan Berita</button>
+    </div>
+  </div>
+</div>
+
+<!-- Page Content Modal -->
+<div class="modal-overlay" id="modal-page">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-header"><h3 id="page-modal-title">Edit Konten</h3><button class="modal-close" onclick="closeModal('modal-page')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="page-key"/>
+      <div class="alert alert-info" style="margin-bottom:1rem" id="page-editor-hint"></div>
+      <label class="form-label">Isi Konten</label>
+      <div id="page-content-rte"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-page')">Batal</button>
+      <button class="btn btn-primary" onclick="savePage()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="global-toast" class="toast"></div>
+
+<script src="../assets/js/config.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════
+// AUTH GUARD — must be first
+// ══════════════════════════════════════════════════════════
+let currentUser = null;
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.replace('login.html'); return; }
+
+  // Tampilkan body hanya setelah auth terkonfirmasi — cegah flash
+  document.body.style.visibility = 'visible';
+  currentUser = session.user;
+  document.getElementById('topbar-email').textContent = currentUser.email;
+  document.getElementById('sb-email').textContent     = currentUser.email;
+  document.getElementById('prof-email').value         = currentUser.email;
+
+  // Restore panel aktif dari URL hash (persist on refresh)
+  const hash = window.location.hash.replace('#', '');
+  const validPanels = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
+  if (hash && validPanels.includes(hash)) {
+    document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    const navItem = document.querySelector(`.sb-item[data-panel="${hash}"]`);
+    const panelEl = document.getElementById('panel-' + hash);
+    if (navItem) navItem.classList.add('active');
+    if (panelEl) panelEl.classList.add('active');
+    if (panelLoaders[hash]) panelLoaders[hash]();
+    const topbarEl = document.getElementById('topbar-title');
+    if (topbarEl && navItem) topbarEl.textContent = navItem.textContent.trim();
+  }
+
+  loadStats();
+  loadSidebarBranding();
+})();
+
+// ══════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════
+function toast(msg, type='success') {
+  const el = document.getElementById('global-toast');
+  el.textContent = msg; el.className = `toast toast-${type} show`;
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════
+const panelLoaders = {
+  staff:    ()=>loadStaff(),
+  news:     ()=>loadNews(),
+  pages:    ()=>loadPages(),
+  settings: ()=>loadSettings(),
+  media:    ()=>loadMedia(),
+  sambutan: ()=>loadSambutan(),
+  profile:  ()=>{},
+};
+
+document.getElementById('sb-nav').addEventListener('click', e => {
+  const item = e.target.closest('.sb-item[data-panel]'); if(!item) return;
+  const panel = item.dataset.panel;
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  item.classList.add('active');
+  document.getElementById('panel-'+panel).classList.add('active');
+  document.getElementById('topbar-title').textContent = item.textContent.trim();
+  if(panelLoaders[panel]) panelLoaders[panel]();
+  // Simpan panel aktif di hash agar refresh tetap di halaman yang sama
+  window.location.hash = panel;
+  // Mobile: close sidebar
+  if(window.innerWidth<768) document.getElementById('sidebar').classList.remove('open');
+});
+
+// Mobile sidebar toggle
+const sbToggle = document.getElementById('sb-toggle');
+if(window.innerWidth<768) sbToggle.style.display='block';
+sbToggle.addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
+
+// Click outside modal
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+
+async function doLogout() {
+  await sb.auth.signOut();
+  window.location.replace('login.html');
+}
+
+// ══════════════════════════════════════════════════════════
+// RICH TEXT EDITOR (lightweight, no deps)
+// ══════════════════════════════════════════════════════════
+function createRTE(containerId, initialHTML='') {
+  const container = document.getElementById(containerId);
+  const toolbar = [
+    ['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],
+    ['|'],
+    ['insertOrderedList','1.'],['insertUnorderedList','•'],
+    ['|'],
+    ['formatBlock:H3','H3'],['formatBlock:P','¶'],
+    ['|'],
+    ['createLink','🔗'],
+  ];
+  const tbHtml = toolbar.map(([cmd,label])=>{
+    if(cmd==='|') return `<span style="width:1px;background:var(--gray-4);align-self:stretch;margin:0 .2rem;display:inline-block"></span>`;
+    return `<button type="button" class="rte-btn" data-cmd="${cmd}" title="${cmd}">${label}</button>`;
+  }).join('');
+  container.innerHTML = `
+    <div class="rte-toolbar">${tbHtml}</div>
+    <div class="rte-editor" contenteditable="true">${initialHTML}</div>`;
+
+  const editor = container.querySelector('.rte-editor');
+  container.querySelector('.rte-toolbar').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-cmd]'); if(!btn) return;
+    const cmd = btn.dataset.cmd;
+    if(cmd.startsWith('formatBlock:')) {
+      document.execCommand('formatBlock', false, cmd.split(':')[1]);
+    } else if(cmd==='createLink') {
+      const url = prompt('Masukkan URL:','https://');
+      if(url) document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    editor.focus();
+  });
+  return { getHTML: ()=>editor.innerHTML, setHTML: (h)=>{ editor.innerHTML=h; } };
+}
+
+let rteMap = {}; // Store RTE instances
+
+// ══════════════════════════════════════════════════════════
+// SIDEBAR BRANDING
+// ══════════════════════════════════════════════════════════
+async function loadSidebarBranding() {
+  const { data } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
+  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
+  if(s.app_name) { document.getElementById('sb-name').textContent=s.app_name; document.title=`Dashboard — ${s.app_name}`; }
+  if(s.logo_url) {
+    const wrap = document.getElementById('sb-logo-wrap');
+    if(wrap) wrap.outerHTML = `<img id="sb-logo" src="${s.logo_url}" alt="Logo" style="width:36px;height:36px;border-radius:6px;object-fit:cover"/>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════════════════
+async function loadStats() {
+  const [{ count: cn },{ count: cs },{ count: cpc }] = await Promise.all([
+    sb.from('news_posts').select('*',{count:'exact',head:true}),
+    sb.from('staff_hierarchy').select('*',{count:'exact',head:true}),
+    sb.from('page_contents').select('*',{count:'exact',head:true}),
+  ]);
+  document.getElementById('stats-row').innerHTML = [
+    [cn??0,'Berita'],
+    [cs??0,'Pegawai'],
+    [cpc??0,'Halaman Konten'],
+    ['✅','Sistem Aktif'],
+  ].map(([n,l])=>`<div class="stat-card"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════
+const CFG_KEYS = ['app_name','app_tagline','logo_url','hero_image_url','hero_description','office_address','office_phone','office_email','external_visit_link','socmed_instagram','socmed_facebook','socmed_youtube'];
+
+async function loadSettings() {
+  const { data } = await sb.from('web_settings').select('key_name,value_text');
+  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
+  CFG_KEYS.forEach(k=>{ const el=document.getElementById('cfg-'+k); if(el&&s[k]) el.value=s[k]; });
+}
+
+async function saveSettings() {
+  const btn = document.querySelector('#panel-settings .btn-gold');
+  btn.disabled=true; btn.innerHTML='<div class="spinner-sm"></div> Menyimpan...';
+  const upserts = CFG_KEYS.map(k=>({ key_name:k, value_text:(document.getElementById('cfg-'+k)?.value||'').trim() }));
+  const { error } = await sb.from('web_settings').upsert(upserts, {onConflict:'key_name'});
+  btn.disabled=false; btn.innerHTML='💾 Simpan Semua';
+  if(error) toast('Gagal: '+error.message,'error');
+  else { toast('Settings disimpan!'); loadSidebarBranding(); }
+}
+
+// ══════════════════════════════════════════════════════════
+// SAMBUTAN
+// ══════════════════════════════════════════════════════════
+let smbRTE = null;
+async function loadSambutan() {
+  if(!smbRTE) smbRTE = createRTE('smb-content-rte','');
+  const { data } = await sb.from('sambutan').select('*').limit(1).single();
+  if(data) {
+    document.getElementById('smb-name').value     = data.name||'';
+    document.getElementById('smb-position').value = data.position||'Kepala Lembaga Pemasyarakatan';
+    document.getElementById('smb-title').value    = data.title||'';
+    document.getElementById('smb-photo').value    = data.photo_url||'';
+    smbRTE.setHTML(data.content||'');
+  }
+}
+
+async function saveSambutan() {
+  const btn = document.querySelector('#panel-sambutan .btn-gold');
+  btn.disabled=true; btn.innerHTML='Menyimpan...';
+  const payload = {
+    name:      document.getElementById('smb-name').value.trim(),
+    position:  document.getElementById('smb-position').value.trim(),
+    title:     document.getElementById('smb-title').value.trim(),
+    photo_url: document.getElementById('smb-photo').value.trim()||null,
+    content:   smbRTE.getHTML(),
+  };
+  // Upsert (sambutan only has 1 row — use id if exists)
+  const { data: existing } = await sb.from('sambutan').select('id').limit(1).single();
+  let error;
+  if(existing) ({ error } = await sb.from('sambutan').update(payload).eq('id',existing.id));
+  else         ({ error } = await sb.from('sambutan').insert(payload));
+  btn.disabled=false; btn.innerHTML='💾 Simpan';
+  if(error) toast('Gagal: '+error.message,'error');
+  else toast('Sambutan disimpan!');
+}
+
+// ══════════════════════════════════════════════════════════
+// STAFF
+// ══════════════════════════════════════════════════════════
+let staffAll=[], staffPage=1; const STAFF_PER=10;
+
+async function loadStaff() {
+  document.getElementById('staff-tbody').innerHTML='<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
+  const { data } = await sb.from('staff_hierarchy').select('*').order('order_priority');
+  staffAll = data||[];
+  renderStaffTable();
+}
+
+function renderStaffTable() {
+  const tbody = document.getElementById('staff-tbody');
+  const pag   = document.getElementById('staff-pag');
+  const total = staffAll.length;
+  const pages = Math.ceil(total/STAFF_PER);
+  const slice = staffAll.slice((staffPage-1)*STAFF_PER, staffPage*STAFF_PER);
+
+  if(!slice.length) { tbody.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👥</div><p>Belum ada staff.</p></div></td></tr>'; pag.innerHTML=''; return; }
+
+  tbody.innerHTML = slice.map(s=>{
+    const init = s.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const img  = s.image_url
+      ? `<img class="td-thumb" data-src="${s.image_url}" src="" loading="lazy" style="background:var(--gray-5)">`
+      : `<div class="td-thumb-ph">${init}</div>`;
+    return `<tr>
+      <td>${img}</td>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.position}</td>
+      <td><span class="badge badge-navy">${s.order_priority}</span></td>
+      <td><div class="td-actions">
+        <button class="btn btn-outline btn-sm" onclick='editStaff(${JSON.stringify(s)})'>✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  // Lazy images in table
+  tbody.querySelectorAll('img[data-src]').forEach(img=>{
+    img.src=img.dataset.src; img.removeAttribute('data-src');
+  });
+  buildPag(pag, pages, staffPage, p=>{ staffPage=p; renderStaffTable(); });
+}
+
+function openStaffModal(s=null) {
+  document.getElementById('staff-modal-title').textContent = s?'Edit Staff':'Tambah Staff';
+  document.getElementById('staff-id').value       = s?.id||'';
+  document.getElementById('staff-name').value     = s?.name||'';
+  document.getElementById('staff-position').value = s?.position||'';
+  document.getElementById('staff-order').value    = s?.order_priority??99;
+  document.getElementById('staff-img-url').value  = s?.image_url||'';
+  const prev = document.getElementById('staff-img-preview');
+  if(s?.image_url){ prev.src=s.image_url; prev.style.display='block'; }
+  else              prev.style.display='none';
+  openModal('modal-staff');
+}
+
+document.getElementById('staff-img-url').addEventListener('input', e=>{
+  const prev = document.getElementById('staff-img-preview');
+  if(e.target.value){ prev.src=e.target.value; prev.style.display='block'; }
+  else                prev.style.display='none';
+});
+
+function editStaff(s) { openStaffModal(s); }
+
+async function saveStaff() {
+  const id  = document.getElementById('staff-id').value;
+  const name= document.getElementById('staff-name').value.trim();
+  const pos = document.getElementById('staff-position').value.trim();
+  if(!name||!pos){ toast('Nama dan jabatan wajib diisi!','error'); return; }
+  const payload = { name, position:pos, order_priority:parseInt(document.getElementById('staff-order').value)||99, image_url:document.getElementById('staff-img-url').value.trim()||null };
+  let error;
+  if(id) ({ error }=await sb.from('staff_hierarchy').update(payload).eq('id',id));
+  else   ({ error }=await sb.from('staff_hierarchy').insert(payload));
+  if(error) toast('Error: '+error.message,'error');
+  else { toast(id?'Staff diperbarui!':'Staff ditambahkan!'); closeModal('modal-staff'); loadStaff(); loadStats(); }
+}
+
+async function deleteStaff(id) {
+  if(!confirm('Hapus data staff ini?')) return;
+  const { error } = await sb.from('staff_hierarchy').delete().eq('id',id);
+  if(error) toast('Gagal: '+error.message,'error');
+  else { toast('Staff dihapus.'); loadStaff(); loadStats(); }
+}
+
+// ══════════════════════════════════════════════════════════
+// NEWS
+// ══════════════════════════════════════════════════════════
+let newsAll=[], newsPage=1; const NEWS_PER=10;
+let newsRTE = null;
+
+async function loadNews() {
+  document.getElementById('news-tbody').innerHTML='<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
+  const { data } = await sb.from('news_posts').select('*').order('created_at',{ascending:false});
+  newsAll = data||[];
+  renderNewsTable();
+}
+
+function renderNewsTable() {
+  const tbody = document.getElementById('news-tbody');
+  const pag   = document.getElementById('news-pag');
+  const pages = Math.ceil(newsAll.length/NEWS_PER);
+  const slice = newsAll.slice((newsPage-1)*NEWS_PER, newsPage*NEWS_PER);
+
+  if(!slice.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📰</div><p>Belum ada berita.</p></div></td></tr>'; pag.innerHTML=''; return; }
+
+  tbody.innerHTML = slice.map(n=>{
+    const date = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+    const img  = n.thumbnail_url
+      ? `<img class="td-thumb" src="${n.thumbnail_url}" loading="lazy" style="background:var(--gray-5)">`
+      : `<div class="td-thumb-ph" style="font-size:.7rem">IMG</div>`;
+    const title = n.title.length>55?n.title.substring(0,55)+'…':n.title;
+    return `<tr>
+      <td>${img}</td>
+      <td><strong>${title}</strong></td>
+      <td>${n.author||'—'}</td>
+      <td>${date}</td>
+      <td><div class="td-actions">
+        <button class="btn btn-outline btn-sm" onclick='editNews(${JSON.stringify(n).replace(/'/g,"&#39;")})'>✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteNews('${n.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  buildPag(pag, pages, newsPage, p=>{ newsPage=p; renderNewsTable(); });
+}
+
+function openNewsModal(n=null) {
+  document.getElementById('news-modal-title').textContent = n?'Edit Berita':'Tambah Berita';
+  document.getElementById('news-id').value        = n?.id||'';
+  document.getElementById('news-title').value     = n?.title||'';
+  document.getElementById('news-author').value    = n?.author||'';
+  document.getElementById('news-thumbnail').value = n?.thumbnail_url||'';
+  // Init or reset RTE
+  if(!newsRTE) newsRTE = createRTE('news-content-rte', n?.content||'');
+  else         newsRTE.setHTML(n?.content||'');
+  openModal('modal-news');
+}
+
+function editNews(n) { openNewsModal(n); }
+
+async function saveNews() {
+  const id    = document.getElementById('news-id').value;
+  const title = document.getElementById('news-title').value.trim();
+  if(!title){ toast('Judul wajib diisi!','error'); return; }
+  const payload = {
+    title,
+    author:        document.getElementById('news-author').value.trim()||null,
+    content:       newsRTE?newsRTE.getHTML():null,
+    thumbnail_url: document.getElementById('news-thumbnail').value.trim()||null,
+  };
+  let error;
+  if(id) ({ error }=await sb.from('news_posts').update(payload).eq('id',id));
+  else   ({ error }=await sb.from('news_posts').insert(payload));
+  if(error) toast('Error: '+error.message,'error');
+  else { toast(id?'Berita diperbarui!':'Berita ditambahkan!'); closeModal('modal-news'); loadNews(); loadStats(); }
+}
+
+async function deleteNews(id) {
+  if(!confirm('Hapus berita ini?')) return;
+  const { error } = await sb.from('news_posts').delete().eq('id',id);
+  if(error) toast('Gagal: '+error.message,'error');
+  else { toast('Berita dihapus.'); loadNews(); loadStats(); }
+}
+
+// ══════════════════════════════════════════════════════════
+// PAGE CONTENTS
+// ══════════════════════════════════════════════════════════
+const PAGE_DEFS = [
+  { key:'visi-misi',        label:'🏛️ Visi & Misi',           hint:'Tampil di halaman Profil. Gunakan H3 untuk sub-judul, bullet untuk misi.' },
+  { key:'alur-kunjungan',   label:'📋 Alur Kunjungan',         hint:'Tampil di Layanan > Alur Kunjungan. Gunakan H3 untuk setiap langkah.' },
+  { key:'alur-penitipan',   label:'📦 Alur Penitipan Barang',  hint:'Tampil di Layanan > Penitipan Barang.' },
+  { key:'syarat-ketentuan', label:'📄 Syarat & Ketentuan',     hint:'Tampil di Layanan > Syarat & Ketentuan.' },
+  { key:'kontak',           label:'📞 Kontak & Jam Pelayanan', hint:'Jika diisi, akan menggantikan data dari Settings. Kosongkan untuk gunakan data Settings.' },
+];
+
+let pageRTE = null;
+
+async function loadPages() {
+  const { data } = await sb.from('page_contents').select('page_name,body_text');
+  const pc = {}; (data||[]).forEach(p=>pc[p.page_name]=p.body_text);
+  document.getElementById('pages-list').innerHTML = PAGE_DEFS.map(def=>{
+    const preview = pc[def.key]?.replace(/<[^>]*>/g,'').substring(0,120)||'Belum ada konten';
+    return `<div class="settings-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:.25rem">${def.label}</div>
+        <div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">${def.hint}</div>
+        <div style="font-size:.8rem;color:var(--gray-2);font-style:italic">${preview}…</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick='openPageModal(${JSON.stringify(def)},${JSON.stringify(pc[def.key]||"")})'>✏️ Edit</button>
+    </div>`;
+  }).join('');
+}
+
+function openPageModal(def, content) {
+  document.getElementById('page-modal-title').textContent = `Edit: ${def.label}`;
+  document.getElementById('page-key').value               = def.key;
+  document.getElementById('page-editor-hint').textContent = def.hint;
+  if(!pageRTE) pageRTE = createRTE('page-content-rte', content);
+  else         pageRTE.setHTML(content);
+  openModal('modal-page');
+}
+
+async function savePage() {
+  const key  = document.getElementById('page-key').value;
+  const body = pageRTE.getHTML();
+  const { error } = await sb.from('page_contents').upsert({ page_name:key, body_text:body, last_updated:new Date().toISOString() }, {onConflict:'page_name'});
+  if(error) toast('Error: '+error.message,'error');
+  else { toast('Konten disimpan!'); closeModal('modal-page'); loadPages(); loadStats(); }
+}
+
+// ══════════════════════════════════════════════════════════
+// MEDIA
+// ══════════════════════════════════════════════════════════
+async function loadMedia() {
+  const grid = document.getElementById('media-grid');
+  grid.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+  const [{ data:sd },{ data:nd }] = await Promise.all([
+    sb.from('staff_hierarchy').select('image_url').not('image_url','is',null),
+    sb.from('news_posts').select('thumbnail_url').not('thumbnail_url','is',null),
+  ]);
+  // Also sambutan
+  const { data:smbd } = await sb.from('sambutan').select('photo_url').not('photo_url','is',null);
+  const urls = [
+    ...(sd||[]).map(r=>r.image_url),
+    ...(nd||[]).map(r=>r.thumbnail_url),
+    ...(smbd||[]).map(r=>r.photo_url),
+  ].filter(Boolean);
+  const unique = [...new Set(urls)];
+  if(!unique.length){
+    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><h3>Belum ada media</h3><p>Upload foto ke R2 dan tambahkan URL-nya ke staff/berita/sambutan.</p></div>';
+    return;
+  }
+  grid.innerHTML = unique.map(url=>{
+    const name = url.split('/').pop() || url;
+    return `<div class="media-item" onclick="copyUrl('${url}')" title="Klik untuk salin URL">
+      <img src="${url}" loading="lazy" onerror="this.parentElement.style.display='none'"/>
+      <div class="media-item-info">
+        <div class="media-item-name">${name}</div>
+        <div class="media-copy-hint">Klik untuk salin URL</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(()=>toast('URL disalin! ✓')).catch(()=>toast('Gagal menyalin.','error'));
+}
+
+// ══════════════════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════════════════
+async function saveEmail() {
+  const email = document.getElementById('prof-email').value.trim();
+  const al = document.getElementById('alert-email');
+  if(!email){ al.innerHTML='<div class="alert alert-danger">Email tidak boleh kosong.</div>'; return; }
+  const { error } = await sb.auth.updateUser({ email });
+  al.innerHTML = error
+    ? `<div class="alert alert-danger">${error.message}</div>`
+    : '<div class="alert alert-success">Email diperbarui! Cek email konfirmasi jika diminta.</div>';
+}
+
+async function savePassword() {
+  const p1 = document.getElementById('prof-pass1').value;
+  const p2 = document.getElementById('prof-pass2').value;
+  const al = document.getElementById('alert-password');
+  if(!p1||p1.length<6){ al.innerHTML='<div class="alert alert-danger">Password minimal 6 karakter.</div>'; return; }
+  if(p1!==p2){ al.innerHTML='<div class="alert alert-danger">Password tidak cocok.</div>'; return; }
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  al.innerHTML = error
+    ? `<div class="alert alert-danger">${error.message}</div>`
+    : '<div class="alert alert-success">✅ Password berhasil diubah!</div>';
+  if(!error){ document.getElementById('prof-pass1').value=''; document.getElementById('prof-pass2').value=''; }
+}
+
+// ══════════════════════════════════════════════════════════
+// PAGINATION HELPER
+// ══════════════════════════════════════════════════════════
+function buildPag(container, total, current, onChange) {
+  container.innerHTML = '';
+  if(total<=1) return;
+  const mk = (label,pg,disabled,active)=>{
+    const b=document.createElement('button');
+    b.className='pg-btn'+(active?' active':'');
+    b.textContent=label; b.disabled=disabled;
+    b.addEventListener('click',()=>onChange(pg));
+    container.appendChild(b);
+  };
+  mk('‹',current-1,current===1);
+  for(let i=1;i<=total;i++) mk(i,i,false,i===current);
+  mk('›',current+1,current===total);
+}
+</script>
+</body>
+</html>
