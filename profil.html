@@ -68,7 +68,7 @@ let allStaff = [], filtered = [], page = 1;
   // Visi misi
   const { data: pc } = await sb.from('page_contents').select('body_text').eq('page_name','visi-misi').single();
   const vmEl = document.getElementById('visi-misi-content');
-  vmEl.innerHTML = pc?.body_text || '<p style="color:var(--gray-3);font-style:italic">Belum ada data.</p>';
+  vmEl.innerHTML = pc?.body_text || '<p style="color:var(--gray-2);font-style:italic">Konten visi-misi belum diatur oleh admin.</p>';
 
   // Staff
   const { data } = await sb.from('staff_hierarchy').select('*').order('order_priority');
@@ -102,9 +102,8 @@ function renderStaff() {
   const slice = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
 
   if (!slice.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3 style="color:var(--gray-3)">Belum ada data</h3></div>';
-    pag.innerHTML  = '';
-    return;
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><h3 style="color:var(--gray-3)">Belum ada data pegawai</h3></div>';
+    pag.innerHTML = ''; return;
   }
   grid.innerHTML = slice.map(s => {
     const init = s.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -115,18 +114,18 @@ function renderStaff() {
   }).join('');
   SHELL.initLazyImages();
 
-  // Pagination
+  // Pagination — hanya tampil jika lebih dari 1 halaman
   pag.innerHTML = '';
   if (pages > 1) {
     const addBtn = (label, pg, disabled=false, active=false) => {
       const b = document.createElement('button');
-      b.className = 'pg-btn' + (active?' active':'');
+      b.className = 'pg-btn' + (active ? ' active' : '');
       b.textContent = label; b.disabled = disabled;
       b.addEventListener('click', () => { page = pg; renderStaff(); window.scrollTo({top:0,behavior:'smooth'}); });
       pag.appendChild(b);
     };
     addBtn('‹', page-1, page===1);
-    for (let i=1;i<=pages;i++) addBtn(i, i, false, i===page);
+    for (let i=1; i<=pages; i++) addBtn(i, i, false, i===page);
     addBtn('›', page+1, page===pages);
   }
 }

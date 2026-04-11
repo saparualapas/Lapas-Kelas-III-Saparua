@@ -7,21 +7,30 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body style="background:#F0F2F5;visibility:hidden">
-<div class="admin-layout">
 
-<!-- ════ ADMIN SPLASH ══════════════════════════════════════ -->
-<div id="admin-splash">
-  <div class="admin-splash-inner">
-    <div class="admin-splash-ring" id="admin-splash-icon">🏛️</div>
-    <div class="admin-splash-text" id="admin-splash-name">Dashboard Admin</div>
-    <div class="admin-splash-sub" id="admin-splash-sub">Memuat...</div>
+<!-- ════ SPLASH ════════════════════════════════════════════ -->
+<div id="admin-splash" style="position:fixed;inset:0;background:var(--navy,#0B1829);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.25rem;transition:opacity .5s">
+  <div style="position:relative;width:80px;height:80px">
+    <div style="position:absolute;inset:0;border-radius:50%;border:2px solid rgba(200,164,74,.2);animation:spin 3s linear infinite"></div>
+    <div style="position:absolute;inset:5px;border-radius:50%;border:2px solid rgba(200,164,74,.4);animation:spin 2s linear infinite reverse"></div>
+    <div style="position:absolute;inset:10px;border-radius:50%;background:var(--navy-2,#122240);display:flex;align-items:center;justify-content:center">
+      <span id="admin-splash-logo-wrap" style="font-size:1.75rem;line-height:1">🏛️</span>
+    </div>
+  </div>
+  <div id="admin-splash-name" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:1.4rem;color:#C8A44A;letter-spacing:.08em"></div>
+  <div style="color:rgba(255,255,255,.4);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase">Admin Dashboard</div>
+  <div style="width:160px;height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden">
+    <div id="admin-splash-bar" style="height:100%;background:#C8A44A;width:0%;transition:width .3s"></div>
   </div>
 </div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<div class="admin-layout">
 
 <!-- ════ SIDEBAR ════════════════════════════════════════════ -->
 <aside class="admin-sidebar" id="sidebar">
   <div class="sb-brand">
-    <span id="sb-logo-wrap" style="font-size:1.5rem;display:flex;align-items:center">🏛️</span>
+    <span id="sb-logo-wrap" style="font-size:1.6rem;line-height:1;display:flex;align-items:center;width:36px;height:36px;justify-content:center">🏛️</span>
     <div><div class="sb-name" id="sb-name">Lapas</div><div class="sb-sub">Admin Dashboard</div></div>
   </div>
   <nav class="sb-nav" id="sb-nav">
@@ -43,8 +52,6 @@
     <button class="btn-logout" onclick="doLogout()">🚪 Keluar</button>
   </div>
 </aside>
-<!-- Overlay backdrop for mobile sidebar -->
-<div class="sb-overlay" id="sb-overlay"></div>
 
 <!-- ════ MAIN ════════════════════════════════════════════════ -->
 <div class="admin-main">
@@ -280,61 +287,73 @@
 <script src="../assets/js/config.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
-// AUTH GUARD — must be first
+// SPLASH HELPERS
 // ══════════════════════════════════════════════════════════
-let currentUser = null;
-
-function hideAdminSplash() {
+function splashProgress(pct) {
+  const bar = document.getElementById('admin-splash-bar');
+  if(bar) bar.style.width = pct + '%';
+}
+function hideSplash() {
   const s = document.getElementById('admin-splash');
-  if (s) { s.classList.add('out'); setTimeout(() => s.remove(), 600); }
+  if(!s) return;
+  s.style.opacity = '0';
+  setTimeout(() => s.remove(), 520);
 }
 
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.replace('login.html'); return; }
+// ══════════════════════════════════════════════════════════
+// AUTH GUARD — cegah flash & proteksi URL
+// ══════════════════════════════════════════════════════════
+const VALID_PANELS = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
+let currentUser = null;
 
-  // Auth OK — tampilkan body
+(async () => {
+  splashProgress(20);
+  const { data: { session } } = await sb.auth.getSession();
+
+  // Tidak ada session → tendang ke login SEKARANG, jangan tampilkan apapun
+  if (!session) {
+    window.location.replace('login.html');
+    return;
+  }
+
+  splashProgress(50);
   document.body.style.visibility = 'visible';
   currentUser = session.user;
+
+  // Isi user info
   document.getElementById('topbar-email').textContent = currentUser.email;
   document.getElementById('sb-email').textContent     = currentUser.email;
   document.getElementById('prof-email').value         = currentUser.email;
 
-  // Update splash branding
-  const { data: brd } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','app_tagline','logo_url']);
-  const bs = {}; (brd||[]).forEach(r=>bs[r.key_name]=r.value_text);
-  const splashName = document.getElementById('admin-splash-name');
-  const splashSub  = document.getElementById('admin-splash-sub');
-  const splashIcon = document.getElementById('admin-splash-icon');
-  if (splashName && bs.app_name) splashName.textContent = bs.app_name;
-  if (splashSub)  splashSub.textContent = 'Dashboard Admin';
-  if (splashIcon && bs.logo_url) {
-    splashIcon.innerHTML = `<img src="${bs.logo_url}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)" onerror="this.parentElement.textContent='🏛️'"/>`;
-  }
-
-  // Restore panel aktif dari URL hash
+  // Restore panel dari hash URL (persist on refresh)
   const hash = window.location.hash.replace('#','');
-  const validPanels = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
-  if (hash && validPanels.includes(hash)) {
-    document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-    const navItem = document.querySelector(`.sb-item[data-panel="${hash}"]`);
-    const panelEl = document.getElementById('panel-'+hash);
-    if (navItem) { navItem.classList.add('active'); document.getElementById('topbar-title').textContent = navItem.textContent.trim(); }
-    if (panelEl) panelEl.classList.add('active');
-    if (panelLoaders[hash]) panelLoaders[hash]();
-  }
+  const initialPanel = VALID_PANELS.includes(hash) ? hash : 'dashboard';
 
-  // Branding sidebar
-  if (bs.app_name) { document.getElementById('sb-name').textContent = bs.app_name; document.title = `Dashboard — ${bs.app_name}`; }
-  if (bs.logo_url) {
-    const wrap = document.getElementById('sb-logo-wrap');
-    if (wrap) wrap.outerHTML = `<img id="sb-logo" src="${bs.logo_url}" alt="Logo" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)" onerror="this.outerHTML='<span style=\'font-size:1.5rem\'>🏛️</span>'"/>`;
-  }
+  // Aktifkan panel yang benar
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const navItem = document.querySelector(`.sb-item[data-panel="${initialPanel}"]`);
+  const panelEl = document.getElementById('panel-'+initialPanel);
+  if(navItem) navItem.classList.add('active');
+  if(panelEl) panelEl.classList.add('active');
+  const topbarEl = document.getElementById('topbar-title');
+  if(topbarEl && navItem) topbarEl.textContent = navItem.textContent.trim();
 
-  await new Promise(r => setTimeout(r, 500));
-  hideAdminSplash();
-  loadStats();
+  splashProgress(75);
+  await Promise.all([loadStats(), loadSidebarBranding()]);
+
+  // Load data panel awal
+  if(panelLoaders[initialPanel]) panelLoaders[initialPanel]();
+
+  splashProgress(100);
+  setTimeout(hideSplash, 350);
+
+  // Monitor auth state — kalau session habis otomatis tendang
+  sb.auth.onAuthStateChange((event) => {
+    if(event === 'SIGNED_OUT') {
+      window.location.replace('login.html');
+    }
+  });
 })();
 
 // ══════════════════════════════════════════════════════════
@@ -357,6 +376,7 @@ const panelLoaders = {
   media:    ()=>loadMedia(),
   sambutan: ()=>loadSambutan(),
   profile:  ()=>{},
+  dashboard:()=>loadStats(),
 };
 
 document.getElementById('sb-nav').addEventListener('click', e => {
@@ -368,27 +388,15 @@ document.getElementById('sb-nav').addEventListener('click', e => {
   document.getElementById('panel-'+panel).classList.add('active');
   document.getElementById('topbar-title').textContent = item.textContent.trim();
   if(panelLoaders[panel]) panelLoaders[panel]();
-  // Simpan panel di hash — agar refresh tetap di panel sama
+  // Simpan panel ke hash agar refresh tidak kembali ke awal
   history.replaceState(null, '', '#' + panel);
-  // Mobile: tutup sidebar + overlay
-  if(window.innerWidth<768) {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sb-overlay').classList.remove('show');
-  }
+  if(window.innerWidth<768) document.getElementById('sidebar').classList.remove('open');
 });
 
 // Mobile sidebar toggle
 const sbToggle = document.getElementById('sb-toggle');
-const sbOverlay = document.getElementById('sb-overlay');
 if(window.innerWidth<768) sbToggle.style.display='block';
-sbToggle.addEventListener('click', () => {
-  document.getElementById('sidebar').classList.toggle('open');
-  sbOverlay.classList.toggle('show');
-});
-sbOverlay.addEventListener('click', () => {
-  document.getElementById('sidebar').classList.remove('open');
-  sbOverlay.classList.remove('show');
-});
+sbToggle.addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
 
 // Click outside modal
 document.querySelectorAll('.modal-overlay').forEach(o=>{
@@ -448,7 +456,20 @@ let rteMap = {}; // Store RTE instances
 // SIDEBAR BRANDING
 // ══════════════════════════════════════════════════════════
 async function loadSidebarBranding() {
-  // Already loaded in auth guard — no-op kept for compatibility
+  const { data } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
+  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
+  if(s.app_name) {
+    document.getElementById('sb-name').textContent = s.app_name;
+    document.title = `Dashboard — ${s.app_name}`;
+    const sn = document.getElementById('admin-splash-name');
+    if(sn) sn.textContent = s.app_name;
+  }
+  if(s.logo_url) {
+    const w = document.getElementById('sb-logo-wrap');
+    if(w) w.outerHTML = `<img id="sb-logo" src="${s.logo_url}" alt="Logo" style="width:36px;height:36px;border-radius:6px;object-fit:cover"/>`;
+    const si = document.getElementById('admin-splash-logo-wrap');
+    if(si) si.outerHTML = `<img src="${s.logo_url}" alt="Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover"/>`;
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -705,7 +726,9 @@ let pageRTE = null;
 async function loadPages() {
   const { data } = await sb.from('page_contents').select('page_name,body_text');
   const pc = {}; (data||[]).forEach(p=>pc[p.page_name]=p.body_text);
-  document.getElementById('pages-list').innerHTML = PAGE_DEFS.map(def=>{
+  // Store content map globally so buttons can reference it safely
+  window._pageContents = pc;
+  document.getElementById('pages-list').innerHTML = PAGE_DEFS.map((def,i)=>{
     const preview = pc[def.key]?.replace(/<[^>]*>/g,'').substring(0,120)||'Belum ada konten';
     return `<div class="settings-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
       <div style="flex:1">
@@ -713,9 +736,15 @@ async function loadPages() {
         <div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">${def.hint}</div>
         <div style="font-size:.8rem;color:var(--gray-2);font-style:italic">${preview}…</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick='openPageModal(${JSON.stringify(def)},${JSON.stringify(pc[def.key]||"")})'>✏️ Edit</button>
+      <button class="btn btn-outline btn-sm" onclick="openPageModalByIndex(${i})">✏️ Edit</button>
     </div>`;
   }).join('');
+}
+
+function openPageModalByIndex(i) {
+  const def = PAGE_DEFS[i];
+  const content = (window._pageContents && window._pageContents[def.key]) || '';
+  openPageModal(def, content);
 }
 
 function openPageModal(def, content) {

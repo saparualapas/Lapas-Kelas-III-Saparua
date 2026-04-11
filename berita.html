@@ -27,8 +27,8 @@
       <button class="btn btn-outline" id="reset-btn">Reset</button>
     </div>
 
-    <!-- Navigation arrows -->
-    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-bottom:1rem">
+    <!-- Navigation arrows — hanya tampil jika lebih dari 1 halaman -->
+    <div id="nav-arrows" style="display:none;gap:.5rem;justify-content:flex-end;margin-bottom:1rem">
       <button class="btn btn-outline btn-sm" id="prev-btn">‹ Sebelumnya</button>
       <button class="btn btn-outline btn-sm" id="next-btn">Berikutnya ›</button>
     </div>
@@ -103,20 +103,25 @@ function doSearch() {
 function scrollTop() { window.scrollTo({top: document.getElementById('news-grid').offsetTop - 100, behavior:'smooth'}); }
 
 function renderNews() {
-  const grid = document.getElementById('pag-info');
-  const pag  = document.getElementById('pag');
+  const pag   = document.getElementById('pag');
   const total = filtered.length;
   const pages = Math.ceil(total / PER_PAGE);
   const slice = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const el    = document.getElementById('news-grid');
 
-  // Update nav buttons
-  document.getElementById('prev-btn').disabled = page===1;
-  document.getElementById('next-btn').disabled = page===pages||pages===0;
+  // Sembunyikan nav arrow jika hanya 1 halaman atau tidak ada konten
+  const navWrap = document.getElementById('nav-arrows');
+  if(navWrap) navWrap.style.display = pages > 1 ? 'flex' : 'none';
+
+  // Update state tombol prev/next
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  if(prevBtn) prevBtn.disabled = page === 1;
+  if(nextBtn) nextBtn.disabled = page >= pages || pages === 0;
 
   if (!slice.length) {
     el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><h3 style="color:var(--gray-3)">Belum ada berita</h3></div>';
-    pag.innerHTML=''; return;
+    pag.innerHTML = ''; return;
   }
 
   el.innerHTML = slice.map(n => {
@@ -137,19 +142,19 @@ function renderNews() {
   }).join('');
   SHELL.initLazyImages();
 
-  // Pagination
-  pag.innerHTML='';
-  if(pages>1){
-    const mk = (label,pg,disabled,active) => {
-      const b=document.createElement('button');
-      b.className='pg-btn'+(active?' active':'');
-      b.textContent=label; b.disabled=disabled;
-      b.addEventListener('click',()=>{page=pg;renderNews();scrollTop();});
+  // Pagination angka — hanya tampil jika lebih dari 1 halaman
+  pag.innerHTML = '';
+  if (pages > 1) {
+    const mk = (label, pg, disabled, active) => {
+      const b = document.createElement('button');
+      b.className = 'pg-btn' + (active ? ' active' : '');
+      b.textContent = label; b.disabled = disabled;
+      b.addEventListener('click', () => { page = pg; renderNews(); scrollTop(); });
       pag.appendChild(b);
     };
-    mk('‹',page-1,page===1);
-    for(let i=1;i<=pages;i++) mk(i,i,false,i===page);
-    mk('›',page+1,page===pages);
+    mk('‹', page-1, page===1);
+    for(let i=1; i<=pages; i++) mk(i, i, false, i===page);
+    mk('›', page+1, page===pages);
   }
 }
 
