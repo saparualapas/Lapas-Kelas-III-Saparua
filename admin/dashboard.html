@@ -742,33 +742,56 @@ async function savePage() {
 async function loadMedia() {
   const grid = document.getElementById('media-grid');
   grid.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
-  const [{ data:sd },{ data:nd }] = await Promise.all([
-    sb.from('staff_hierarchy').select('image_url').not('image_url','is',null),
-    sb.from('news_posts').select('thumbnail_url').not('thumbnail_url','is',null),
-  ]);
-  // Also sambutan
-  const { data:smbd } = await sb.from('sambutan').select('photo_url').not('photo_url','is',null);
-  const urls = [
-    ...(sd||[]).map(r=>r.image_url),
-    ...(nd||[]).map(r=>r.thumbnail_url),
-    ...(smbd||[]).map(r=>r.photo_url),
-  ].filter(Boolean);
-  const unique = [...new Set(urls)];
-  if(!unique.length){
-    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><h3>Belum ada media</h3><p>Upload foto ke R2 dan tambahkan URL-nya ke staff/berita/sambutan.</p></div>';
-    return;
-  }
-  grid.innerHTML = unique.map(url=>{
-    const name = url.split('/').pop() || url;
-    return `<div class="media-item" onclick="copyUrl('${url}')" title="Klik untuk salin URL">
-      <img src="${url}" loading="lazy" onerror="this.parentElement.style.display='none'"/>
-      <div class="media-item-info">
-        <div class="media-item-name">${name}</div>
-        <div class="media-copy-hint">Klik untuk salin URL</div>
-      </div>
+
+  try {
+    // Ambil semua URL dari Supabase
+    const [{ data: sd }, { data: nd }, { data: smbd }] = await Promise.all([
+      sb.from('staff_hierarchy').select('image_url').not('image_url', 'is', null),
+      sb.from('news_posts').select('thumbnail_url').not('thumbnail_url', 'is', null),
+      sb.from('sambutan').select('photo_url').not('photo_url', 'is', null),
+    ]);
+
+    const urls = [
+      ...(sd  || []).map(r => r.image_url),
+      ...(nd  || []).map(r => r.thumbnail_url),
+      ...(smbd|| []).map(r => r.photo_url),
+    ].filter(Boolean);
+
+    const unique = [...new Set(urls)];
+
+    if (!unique.length) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-icon">🖼️</div>
+          <h3>Belum ada media tersimpan</h3>
+          <p style="font-size:.85rem;color:var(--gray-2)">
+            Upload foto lalu salin URL-nya ke form Staff, Berita, atau Sambutan.<br/>
+            Foto yang sudah dipakai akan muncul di sini.
+          </p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = unique.map(url => {
+      const name = url.split('/').pop() || url;
+      return `<div class="media-item" onclick="copyUrl('${url}')" title="Klik untuk salin URL">
+        <img src="${url}" loading="lazy" onerror="this.parentElement.style.background='var(--gray-5)';this.style.display='none'"/>
+        <div class="media-item-info">
+          <div class="media-item-name">${name}</div>
+          <div class="media-copy-hint">Klik untuk salin URL</div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">⚠️</div>
+      <h3>Gagal memuat media</h3>
+      <p>${err.message}</p>
     </div>`;
-  }).join('');
+  }
 }
+
 
 function copyUrl(url) {
   navigator.clipboard.writeText(url).then(()=>toast('URL disalin! ✓')).catch(()=>toast('Gagal menyalin.','error'));
