@@ -7,8 +7,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body style="background:#F0F2F5;visibility:hidden">
-
-<!-- ════ ADMIN SPLASH (pakai CSS splash yang sama dengan halaman user) ═════ -->
 <div id="splash">
   <div class="splash-inner">
     <div class="splash-logo-ring">
@@ -22,7 +20,6 @@
     <div class="splash-bar"><div class="splash-bar-fill" id="splash-fill"></div></div>
   </div>
 </div>
-
 <div class="admin-layout">
 
 <!-- ════ SIDEBAR ════════════════════════════════════════════ -->
@@ -310,19 +307,19 @@
 <script src="../assets/js/config.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
-// SPLASH HELPERS
+// SPLASH
 // ══════════════════════════════════════════════════════════
-let _splashTimer = null;
-function _splashStart() {
+let _splashTick = null;
+function splashStart() {
   let pct = 0;
-  _splashTimer = setInterval(() => {
+  _splashTick = setInterval(() => {
     pct = Math.min(pct + Math.random() * 15, 85);
     const el = document.getElementById('splash-fill');
     if (el) el.style.width = pct + '%';
   }, 120);
 }
-function _splashEnd() {
-  clearInterval(_splashTimer);
+function splashEnd() {
+  clearInterval(_splashTick);
   const el = document.getElementById('splash-fill');
   if (el) el.style.width = '100%';
   setTimeout(() => {
@@ -334,81 +331,75 @@ function _splashEnd() {
 // ══════════════════════════════════════════════════════════
 // AUTO LOGOUT — 30 menit tidak ada aktivitas
 // ══════════════════════════════════════════════════════════
-const IDLE_MS = 30 * 60 * 1000; // 30 menit
+const IDLE_TIMEOUT = 30 * 60 * 1000;
 let _idleTimer = null;
-function _resetIdle() {
+function resetIdle() {
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(async () => {
     await sb.auth.signOut();
     window.location.replace('login.html');
-  }, IDLE_MS);
+  }, IDLE_TIMEOUT);
 }
-function _initIdleWatcher() {
+function initIdleWatcher() {
   ['mousemove','keydown','click','touchstart','scroll'].forEach(ev =>
-    document.addEventListener(ev, _resetIdle, { passive: true })
+    document.addEventListener(ev, resetIdle, { passive: true })
   );
-  _resetIdle();
+  resetIdle();
 }
 
 // ══════════════════════════════════════════════════════════
-// AUTH GUARD — proteksi ketat, cegah flash sama sekali
+// AUTH GUARD — body hidden sampai session terkonfirmasi
 // ══════════════════════════════════════════════════════════
 const VALID_PANELS = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
 let currentUser = null;
 
-// Jalankan splash sebelum apapun
-_splashStart();
+splashStart();
 
 (async () => {
-  // Cek session
   const { data: { session } } = await sb.auth.getSession();
 
-  // TIDAK ada session → redirect SEKARANG, body tetap hidden
+  // Tidak ada session → redirect langsung, body tetap hidden
   if (!session) {
     window.location.replace('login.html');
     return;
   }
 
-  // Ada session → tampilkan UI
+  // Session valid → tampilkan UI
   document.body.style.visibility = 'visible';
   currentUser = session.user;
-
   document.getElementById('topbar-email').textContent = currentUser.email;
   document.getElementById('sb-email').textContent     = currentUser.email;
   document.getElementById('prof-email').value         = currentUser.email;
 
-  // ── Restore panel dari URL hash ─────────────────────────
+  // Restore panel dari hash URL — agar refresh tetap di panel yang sama
   const hash        = window.location.hash.replace('#', '').trim();
   const activePanel = VALID_PANELS.includes(hash) ? hash : 'dashboard';
 
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  const navEl   = document.querySelector(`.sb-item[data-panel="${activePanel}"]`);
-  const panelEl = document.getElementById('panel-' + activePanel);
-  if (navEl)   navEl.classList.add('active');
-  if (panelEl) panelEl.classList.add('active');
+  const activeNav   = document.querySelector(`.sb-item[data-panel="${activePanel}"]`);
+  const activePanEl = document.getElementById('panel-' + activePanel);
+  if (activeNav)   activeNav.classList.add('active');
+  if (activePanEl) activePanEl.classList.add('active');
   const topbarEl = document.getElementById('topbar-title');
-  if (topbarEl && navEl) topbarEl.textContent = navEl.textContent.trim();
+  if (topbarEl && activeNav) topbarEl.textContent = activeNav.textContent.trim();
 
-  // ── Load branding → isi splash name sebelum hilang ─────
+  // Load branding → isi splash sebelum hilang
   await loadSidebarBranding();
 
-  // ── Load data panel aktif ───────────────────────────────
+  // Load data panel aktif
   loadStats();
   if (panelLoaders[activePanel]) panelLoaders[activePanel]();
 
-  // ── Sembunyikan splash ──────────────────────────────────
-  _splashEnd();
+  splashEnd();
 
-  // ── Pantau perubahan auth (logout dari tab lain) ────────
+  // Monitor auth state perubahan (logout dari tab lain)
   sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') {
-      window.location.replace('login.html');
-    }
+    if (event === 'SIGNED_OUT') window.location.replace('login.html');
   });
 
-  // ── Aktifkan auto-logout 30 menit idle ─────────────────
-  _initIdleWatcher();
+  // Aktifkan auto logout 30 menit
+  initIdleWatcher();
 })();
 
 // ══════════════════════════════════════════════════════════
@@ -421,7 +412,7 @@ function toast(msg, type='success') {
 }
 
 // ══════════════════════════════════════════════════════════
-// NAVIGATION — simpan panel ke hash agar refresh tetap di situ
+// NAVIGATION — tulis hash ke URL agar refresh tetap di panel
 // ══════════════════════════════════════════════════════════
 const panelLoaders = {
   dashboard: ()=>loadStats(),
@@ -443,7 +434,6 @@ document.getElementById('sb-nav').addEventListener('click', e => {
   document.getElementById('panel-' + panel).classList.add('active');
   document.getElementById('topbar-title').textContent = item.textContent.trim();
   if (panelLoaders[panel]) panelLoaders[panel]();
-  // Tulis hash → refresh akan restore ke panel ini
   history.replaceState(null, '', location.pathname + '#' + panel);
   if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
 });
@@ -779,14 +769,16 @@ const PAGE_DEFS = [
 
 let pageRTE = null;
 
-// Simpan konten halaman secara global agar tombol edit bisa akses
-window._pageContents = {};
+// Simpan data konten secara global — diakses oleh tombol Edit via index
+window._pageCache = { defs: [], contents: {} };
 
 async function loadPages() {
   const { data } = await sb.from('page_contents').select('page_name,body_text');
   const pc = {}; (data||[]).forEach(p => pc[p.page_name] = p.body_text);
-  window._pageContents = pc;
-  document.getElementById('pages-list').innerHTML = PAGE_DEFS.map((def, i) => {
+  window._pageCache.contents = pc;
+  window._pageCache.defs     = PAGE_DEFS;
+
+  document.getElementById('pages-list').innerHTML = PAGE_DEFS.map((def, idx) => {
     const preview = pc[def.key]?.replace(/<[^>]*>/g,'').substring(0,120) || 'Belum ada konten';
     return `<div class="settings-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
       <div style="flex:1">
@@ -794,24 +786,23 @@ async function loadPages() {
         <div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">${def.hint}</div>
         <div style="font-size:.8rem;color:var(--gray-2);font-style:italic">${preview}…</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="openPageByIndex(${i})">✏️ Edit</button>
+      <button class="btn btn-outline btn-sm" onclick="openPageByIdx(${idx})">✏️ Edit</button>
     </div>`;
   }).join('');
 }
 
-// Dipanggil oleh tombol Edit — aman dari masalah escape karakter
-function openPageByIndex(i) {
-  const def     = PAGE_DEFS[i];
-  const content = (window._pageContents || {})[def.key] || '';
+function openPageByIdx(idx) {
+  const def     = window._pageCache.defs[idx];
+  const content = window._pageCache.contents[def.key] || '';
   openPageModal(def, content);
 }
 
 function openPageModal(def, content) {
-  document.getElementById('page-modal-title').textContent = `Edit: ${def.label}`;
+  document.getElementById('page-modal-title').textContent = 'Edit: ' + def.label;
   document.getElementById('page-key').value               = def.key;
   document.getElementById('page-editor-hint').textContent = def.hint;
-  if(!pageRTE) pageRTE = createRTE('page-content-rte', content);
-  else         pageRTE.setHTML(content);
+  if (!pageRTE) pageRTE = createRTE('page-content-rte', content);
+  else          pageRTE.setHTML(content);
   openModal('modal-page');
 }
 
