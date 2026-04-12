@@ -17,8 +17,8 @@
 <section class="home-hero" id="hero-section">
   <div class="home-hero-content">
     <div class="home-hero-badge">🏛️ Website Resmi</div>
-    <h1 id="hero-title">Selamat Datang di<br/><span id="hero-appname">Lembaga Pemasyarakatan</span></h1>
-    <p id="hero-desc">Memuat...</p>
+    <h1 id="hero-title"><span id="hero-appname"></span></h1>
+    <p id="hero-desc"></p>
     <div class="home-hero-btns">
       <a href="#" id="hero-visit" class="btn btn-gold btn-lg">📋 Daftar Kunjungan</a>
       <a href="layanan.html" class="btn btn-outline-white btn-lg">Lihat Layanan</a>
@@ -68,13 +68,13 @@
   <div class="sambutan-inner">
     <div class="sambutan-photo-wrap" id="sambutan-photo-wrap">
       <div class="sambutan-photo-ph" id="sambutan-photo-ph">👤</div>
-      <div class="sambutan-badge" id="sambutan-badge">Kepala Lapas</div>
+      <div class="sambutan-badge" id="sambutan-badge"></div>
     </div>
     <div class="sambutan-text-wrap">
       <div class="sambutan-label">Sambutan</div>
       <h2 class="sambutan-title" id="sambutan-title">Sambutan Kepala Lapas</h2>
-      <div class="sambutan-name" id="sambutan-name">—</div>
-      <div class="sambutan-pos"  id="sambutan-pos">Kepala Lembaga Pemasyarakatan</div>
+      <div class="sambutan-name" id="sambutan-name"></div>
+      <div class="sambutan-pos" id="sambutan-pos"></div>
       <blockquote class="sambutan-quote" id="sambutan-quote">
         <div class="loading-center"><div class="spinner" style="border-top-color:var(--gold-2)"></div></div>
       </blockquote>
@@ -199,28 +199,37 @@
     }).join('');
     SHELL.initLazyImages();
 
-    // Slider logic — dinamis, tombol muncul hanya jika ada lebih dari 3 kartu
+    // Slider logic — hitung setelah render selesai (pakai requestAnimationFrame)
     let pos = 0;
-    const cardW     = 316; // 300px lebar + 16px gap
-    const visibleN  = Math.floor((document.getElementById('news-slider-wrap').offsetWidth || 960) / cardW) || 3;
-    const max       = Math.max(0, news.length - visibleN);
+    const cardW   = 316; // 300px + 16px gap
+    const slideNav = document.getElementById('slide-nav');
+    const prevBtn  = document.getElementById('slide-prev');
+    const nextBtn  = document.getElementById('slide-next');
 
-    const slideNav  = document.getElementById('slide-nav');
-    const prevBtn   = document.getElementById('slide-prev');
-    const nextBtn   = document.getElementById('slide-next');
-
-    // Tampilkan nav hanya jika ada card yang tersembunyi
-    if (max > 0) slideNav.style.display = 'flex';
+    function calcMax() {
+      const wrapW  = document.getElementById('news-slider-wrap').offsetWidth || window.innerWidth || 960;
+      const visible = Math.max(1, Math.floor(wrapW / cardW));
+      return Math.max(0, news.length - visible);
+    }
 
     function updateSlider() {
+      const max = calcMax();
+      // Clamp pos agar tidak melewati batas
+      if (pos > max) pos = max;
       slider.style.transform = `translateX(-${pos * cardW}px)`;
       prevBtn.disabled = pos <= 0;
       nextBtn.disabled = pos >= max;
+      // Tampilkan tombol hanya jika perlu
+      slideNav.style.display = max > 0 ? 'flex' : 'none';
     }
 
-    nextBtn.addEventListener('click', () => { if (pos < max) { pos++; updateSlider(); } });
-    prevBtn.addEventListener('click', () => { if (pos > 0)   { pos--; updateSlider(); } });
-    updateSlider();
+    nextBtn.addEventListener('click', () => { const max = calcMax(); if (pos < max) { pos++; updateSlider(); } });
+    prevBtn.addEventListener('click', () => { if (pos > 0) { pos--; updateSlider(); } });
+
+    // Hitung setelah layout selesai
+    requestAnimationFrame(() => { requestAnimationFrame(updateSlider); });
+    // Update juga saat window resize
+    window.addEventListener('resize', updateSlider);
   }
 
   // Staff preview (up to 4)

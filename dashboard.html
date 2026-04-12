@@ -8,7 +8,7 @@
 </head>
 <body style="background:#F0F2F5;visibility:hidden">
 
-<!-- ════ ADMIN SPLASH — sama persis dengan splash publik ═══ -->
+<!-- ════ ADMIN SPLASH (pakai CSS splash yang sama dengan halaman user) ═════ -->
 <div id="splash">
   <div class="splash-inner">
     <div class="splash-logo-ring">
@@ -181,15 +181,40 @@
       <div class="sh">
         <h2>🖼️ Media Library</h2>
         <div style="display:flex;gap:.75rem;align-items:center">
-          <input type="file" id="media-file-input" accept="image/*" style="display:none"/>
-          <button class="btn btn-primary" onclick="document.getElementById('media-file-input').click()">📤 Upload ke R2</button>
+          <input type="file" id="media-file-input" accept="image/*,image/png,image/jpeg,image/jpg,image/webp" style="display:none" multiple/>
+          <button class="btn btn-primary" id="btn-upload-media">📤 Upload Foto</button>
         </div>
       </div>
-      <div class="alert alert-info" style="margin-bottom:1.25rem">
-        <strong>Cara upload foto:</strong> Upload foto di bucket R2 Anda via Cloudflare Dashboard, lalu refresh halaman ini. Klik thumbnail untuk menyalin URL-nya.
+      <div id="upload-progress-wrap" style="display:none;margin-bottom:1rem">
+        <div style="background:var(--gray-5);border-radius:99px;height:8px;overflow:hidden">
+          <div id="upload-progress-bar" style="height:100%;background:var(--gold);width:0%;transition:width .3s"></div>
+        </div>
+        <div id="upload-progress-text" style="font-size:.8rem;color:var(--gray-2);margin-top:.4rem">Mengupload...</div>
       </div>
       <div id="alert-media"></div>
       <div class="media-grid" id="media-grid"><div class="loading-center"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- Media Preview Modal -->
+    <div class="modal-overlay" id="modal-media-preview">
+      <div class="modal-box" style="max-width:540px">
+        <div class="modal-header">
+          <h3>🖼️ Detail Foto</h3>
+          <button class="modal-close" onclick="closeModal('modal-media-preview')">✕</button>
+        </div>
+        <div class="modal-body" style="text-align:center">
+          <img id="preview-img" src="" alt="" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;margin-bottom:1rem"/>
+          <div id="preview-filename" style="font-size:.8rem;color:var(--gray-2);margin-bottom:.75rem;word-break:break-all"></div>
+          <div style="display:flex;gap:.75rem;background:var(--gray-5);border-radius:8px;padding:.75rem;align-items:center">
+            <input id="preview-url" class="form-control" style="font-size:.78rem;flex:1" readonly/>
+            <button class="btn btn-gold btn-sm" onclick="copyPreviewUrl()" style="white-space:nowrap">📋 Salin URL</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteMediaFromPreview()">🗑️ Hapus Foto</button>
+          <button class="btn btn-primary" onclick="copyPreviewUrl()">📋 Salin & Tutup</button>
+        </div>
+      </div>
     </div>
 
     <!-- ── PROFILE ────────────────────────────────────────── -->
@@ -285,55 +310,75 @@
 <script src="../assets/js/config.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
-// SPLASH HELPERS (pakai CSS yang sama dengan splash publik)
+// SPLASH HELPERS
 // ══════════════════════════════════════════════════════════
-let _splashPct = 0;
-let _splashTick = null;
-function splashAnimate() {
-  // Auto-crawl progress bar sampai 85% sambil nunggu data
-  _splashTick = setInterval(() => {
-    _splashPct = Math.min(_splashPct + Math.random() * 15, 85);
+let _splashTimer = null;
+function _splashStart() {
+  let pct = 0;
+  _splashTimer = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 15, 85);
     const el = document.getElementById('splash-fill');
-    if (el) el.style.width = _splashPct + '%';
+    if (el) el.style.width = pct + '%';
   }, 120);
 }
-function splashDone() {
-  clearInterval(_splashTick);
+function _splashEnd() {
+  clearInterval(_splashTimer);
   const el = document.getElementById('splash-fill');
   if (el) el.style.width = '100%';
   setTimeout(() => {
     const s = document.getElementById('splash');
     if (s) { s.classList.add('out'); setTimeout(() => s.remove(), 600); }
-  }, 380);
+  }, 350);
 }
 
 // ══════════════════════════════════════════════════════════
-// AUTH GUARD — proteksi penuh, cegah flash
+// AUTO LOGOUT — 30 menit tidak ada aktivitas
+// ══════════════════════════════════════════════════════════
+const IDLE_MS = 30 * 60 * 1000; // 30 menit
+let _idleTimer = null;
+function _resetIdle() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(async () => {
+    await sb.auth.signOut();
+    window.location.replace('login.html');
+  }, IDLE_MS);
+}
+function _initIdleWatcher() {
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(ev =>
+    document.addEventListener(ev, _resetIdle, { passive: true })
+  );
+  _resetIdle();
+}
+
+// ══════════════════════════════════════════════════════════
+// AUTH GUARD — proteksi ketat, cegah flash sama sekali
 // ══════════════════════════════════════════════════════════
 const VALID_PANELS = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
 let currentUser = null;
 
-splashAnimate();
+// Jalankan splash sebelum apapun
+_splashStart();
 
 (async () => {
+  // Cek session
   const { data: { session } } = await sb.auth.getSession();
 
-  // Tidak ada session → redirect ke login TANPA tampilkan apapun
+  // TIDAK ada session → redirect SEKARANG, body tetap hidden
   if (!session) {
     window.location.replace('login.html');
     return;
   }
 
-  // Session valid → tampilkan UI
+  // Ada session → tampilkan UI
   document.body.style.visibility = 'visible';
   currentUser = session.user;
+
   document.getElementById('topbar-email').textContent = currentUser.email;
   document.getElementById('sb-email').textContent     = currentUser.email;
   document.getElementById('prof-email').value         = currentUser.email;
 
   // ── Restore panel dari URL hash ─────────────────────────
-  // Ini yang membuat refresh tetap di panel yang sama
-  const hash = window.location.hash.replace('#', '').trim();
+  const hash        = window.location.hash.replace('#', '').trim();
   const activePanel = VALID_PANELS.includes(hash) ? hash : 'dashboard';
 
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
@@ -345,19 +390,25 @@ splashAnimate();
   const topbarEl = document.getElementById('topbar-title');
   if (topbarEl && navEl) topbarEl.textContent = navEl.textContent.trim();
 
-  // ── Load branding ke splash sebelum hilang ───────────────
+  // ── Load branding → isi splash name sebelum hilang ─────
   await loadSidebarBranding();
 
-  // ── Load data panel aktif ────────────────────────────────
+  // ── Load data panel aktif ───────────────────────────────
   loadStats();
   if (panelLoaders[activePanel]) panelLoaders[activePanel]();
 
-  splashDone();
+  // ── Sembunyikan splash ──────────────────────────────────
+  _splashEnd();
 
-  // ── Monitor auth — kalau logout di tab lain, tendang ────
+  // ── Pantau perubahan auth (logout dari tab lain) ────────
   sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') window.location.replace('login.html');
+    if (event === 'SIGNED_OUT') {
+      window.location.replace('login.html');
+    }
   });
+
+  // ── Aktifkan auto-logout 30 menit idle ─────────────────
+  _initIdleWatcher();
 })();
 
 // ══════════════════════════════════════════════════════════
@@ -370,7 +421,7 @@ function toast(msg, type='success') {
 }
 
 // ══════════════════════════════════════════════════════════
-// NAVIGATION
+// NAVIGATION — simpan panel ke hash agar refresh tetap di situ
 // ══════════════════════════════════════════════════════════
 const panelLoaders = {
   dashboard: ()=>loadStats(),
@@ -392,7 +443,7 @@ document.getElementById('sb-nav').addEventListener('click', e => {
   document.getElementById('panel-' + panel).classList.add('active');
   document.getElementById('topbar-title').textContent = item.textContent.trim();
   if (panelLoaders[panel]) panelLoaders[panel]();
-  // ── Tulis hash ke URL — ini yang bikin refresh tetap di sini
+  // Tulis hash → refresh akan restore ke panel ini
   history.replaceState(null, '', location.pathname + '#' + panel);
   if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
 });
@@ -411,6 +462,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 
 async function doLogout() {
+  clearTimeout(_idleTimer);
   await sb.auth.signOut();
   window.location.replace('login.html');
 }
@@ -469,10 +521,8 @@ async function loadSidebarBranding() {
     if (sn) sn.textContent = s.app_name;
   }
   if (s.logo_url) {
-    // Update sidebar logo
     const sbLogo = document.getElementById('sb-logo');
     if (sbLogo) sbLogo.src = s.logo_url;
-    // Update splash logo
     const spLogo = document.getElementById('splash-logo');
     if (spLogo) spLogo.src = s.logo_url;
   }
@@ -729,9 +779,12 @@ const PAGE_DEFS = [
 
 let pageRTE = null;
 
+// Simpan konten halaman secara global agar tombol edit bisa akses
+window._pageContents = {};
+
 async function loadPages() {
   const { data } = await sb.from('page_contents').select('page_name,body_text');
-  const pc = {}; (data||[]).forEach(p=>pc[p.page_name]=p.body_text);
+  const pc = {}; (data||[]).forEach(p => pc[p.page_name] = p.body_text);
   window._pageContents = pc;
   document.getElementById('pages-list').innerHTML = PAGE_DEFS.map((def, i) => {
     const preview = pc[def.key]?.replace(/<[^>]*>/g,'').substring(0,120) || 'Belum ada konten';
@@ -741,28 +794,24 @@ async function loadPages() {
         <div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">${def.hint}</div>
         <div style="font-size:.8rem;color:var(--gray-2);font-style:italic">${preview}…</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="openPageByIdx(${i})">✏️ Edit</button>
+      <button class="btn btn-outline btn-sm" onclick="openPageByIndex(${i})">✏️ Edit</button>
     </div>`;
   }).join('');
 }
 
-function openPageByIdx(i) {
+// Dipanggil oleh tombol Edit — aman dari masalah escape karakter
+function openPageByIndex(i) {
   const def     = PAGE_DEFS[i];
   const content = (window._pageContents || {})[def.key] || '';
-  document.getElementById('page-modal-title').textContent = `Edit: ${def.label}`;
-  document.getElementById('page-key').value               = def.key;
-  document.getElementById('page-editor-hint').textContent = def.hint;
-  if (!pageRTE) pageRTE = createRTE('page-content-rte', content);
-  else          pageRTE.setHTML(content);
-  openModal('modal-page');
+  openPageModal(def, content);
 }
 
 function openPageModal(def, content) {
   document.getElementById('page-modal-title').textContent = `Edit: ${def.label}`;
   document.getElementById('page-key').value               = def.key;
   document.getElementById('page-editor-hint').textContent = def.hint;
-  if (!pageRTE) pageRTE = createRTE('page-content-rte', content);
-  else          pageRTE.setHTML(content);
+  if(!pageRTE) pageRTE = createRTE('page-content-rte', content);
+  else         pageRTE.setHTML(content);
   openModal('modal-page');
 }
 
@@ -777,36 +826,132 @@ async function savePage() {
 // ══════════════════════════════════════════════════════════
 // MEDIA
 // ══════════════════════════════════════════════════════════
+let allMediaFiles = [];
+let currentPreviewKey = '';
+
 async function loadMedia() {
   const grid = document.getElementById('media-grid');
   grid.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
-  const [{ data:sd },{ data:nd }] = await Promise.all([
-    sb.from('staff_hierarchy').select('image_url').not('image_url','is',null),
-    sb.from('news_posts').select('thumbnail_url').not('thumbnail_url','is',null),
-  ]);
-  // Also sambutan
-  const { data:smbd } = await sb.from('sambutan').select('photo_url').not('photo_url','is',null);
-  const urls = [
-    ...(sd||[]).map(r=>r.image_url),
-    ...(nd||[]).map(r=>r.thumbnail_url),
-    ...(smbd||[]).map(r=>r.photo_url),
-  ].filter(Boolean);
-  const unique = [...new Set(urls)];
-  if(!unique.length){
-    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><h3>Belum ada media</h3><p>Upload foto ke R2 dan tambahkan URL-nya ke staff/berita/sambutan.</p></div>';
-    return;
-  }
-  grid.innerHTML = unique.map(url=>{
-    const name = url.split('/').pop() || url;
-    return `<div class="media-item" onclick="copyUrl('${url}')" title="Klik untuk salin URL">
-      <img src="${url}" loading="lazy" onerror="this.parentElement.style.display='none'"/>
-      <div class="media-item-info">
-        <div class="media-item-name">${name}</div>
-        <div class="media-copy-hint">Klik untuk salin URL</div>
-      </div>
+
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    const resp = await fetch('/api/media-list', {
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+
+    if (!resp.ok) throw new Error('Gagal memuat daftar foto');
+    const { files } = await resp.json();
+    allMediaFiles = files || [];
+
+    if (!allMediaFiles.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-icon">🖼️</div>
+        <h3>Belum ada foto</h3>
+        <p style="color:var(--gray-2);font-size:.85rem">Klik "Upload Foto" untuk menambahkan gambar</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = allMediaFiles.map(f => `
+      <div class="media-item" onclick="openMediaPreview('${f.key}','${f.url}')" title="${f.name}">
+        <img src="${f.url}" loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+          style="width:100%;height:140px;object-fit:cover"/>
+        <div style="display:none;height:140px;align-items:center;justify-content:center;font-size:2rem;background:var(--gray-5)">🖼️</div>
+        <div class="media-item-info">
+          <div class="media-item-name" style="font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
+          <div class="media-copy-hint" style="font-size:.7rem;color:var(--gold)">Klik untuk lihat & salin URL</div>
+        </div>
+      </div>`).join('');
+
+  } catch(err) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">⚠️</div><h3>Gagal memuat</h3><p>${err.message}</p>
     </div>`;
-  }).join('');
+  }
 }
+
+function openMediaPreview(key, url) {
+  currentPreviewKey = key;
+  document.getElementById('preview-img').src    = url;
+  document.getElementById('preview-url').value  = url;
+  document.getElementById('preview-filename').textContent = key.split('/').pop();
+  openModal('modal-media-preview');
+}
+
+function copyPreviewUrl() {
+  const url = document.getElementById('preview-url').value;
+  navigator.clipboard.writeText(url)
+    .then(() => { toast('✅ URL disalin!'); closeModal('modal-media-preview'); })
+    .catch(() => { toast('Gagal menyalin.','error'); });
+}
+
+async function deleteMediaFromPreview() {
+  if (!confirm('Hapus foto ini? Foto yang sudah dipakai di konten akan rusak.')) return;
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    const resp = await fetch(`/api/media-delete?key=${encodeURIComponent(currentPreviewKey)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!resp.ok) throw new Error('Gagal menghapus');
+    toast('Foto dihapus.');
+    closeModal('modal-media-preview');
+    loadMedia();
+  } catch(err) {
+    toast('Hapus gagal: '+err.message, 'error');
+  }
+}
+
+// Upload handler
+document.getElementById('btn-upload-media').addEventListener('click', () => {
+  document.getElementById('media-file-input').click();
+});
+
+document.getElementById('media-file-input').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  const invalid = files.filter(f => !f.type.startsWith('image/'));
+  if (invalid.length) { toast('Hanya file gambar yang diperbolehkan.','error'); return; }
+  const tooBig  = files.filter(f => f.size > 5*1024*1024);
+  if (tooBig.length) { toast('Ukuran file maksimal 5MB per foto.','error'); return; }
+
+  const wrap = document.getElementById('upload-progress-wrap');
+  const bar  = document.getElementById('upload-progress-bar');
+  const txt  = document.getElementById('upload-progress-text');
+  wrap.style.display = 'block';
+
+  const { data:{ session } } = await sb.auth.getSession();
+  let done = 0;
+
+  for (const file of files) {
+    txt.textContent = `Mengupload ${file.name}... (${done+1}/${files.length})`;
+    bar.style.width = `${Math.round((done/files.length)*100)}%`;
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const resp = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        body: fd
+      });
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Upload gagal');
+      done++;
+    } catch(err) {
+      toast(`Gagal upload ${file.name}: ${err.message}`, 'error');
+    }
+  }
+
+  bar.style.width = '100%';
+  txt.textContent = `✅ ${done} foto berhasil diupload`;
+  setTimeout(() => { wrap.style.display='none'; bar.style.width='0%'; }, 2000);
+
+  e.target.value = '';
+  loadMedia();
+});
 
 function copyUrl(url) {
   navigator.clipboard.writeText(url).then(()=>toast('URL disalin! ✓')).catch(()=>toast('Gagal menyalin.','error'));
