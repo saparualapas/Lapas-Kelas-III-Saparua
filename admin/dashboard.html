@@ -6,7 +6,21 @@
   <link rel="stylesheet" href="../assets/css/main.css"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
-<body style="background:#F0F2F5">
+<body style="background:#F0F2F5;visibility:hidden">
+<!-- SPLASH: pakai class CSS yang sama dengan halaman publik -->
+<div id="splash">
+  <div class="splash-inner">
+    <div class="splash-logo-ring">
+      <div class="splash-ring r1"></div>
+      <div class="splash-ring r2"></div>
+      <div class="splash-ring r3"></div>
+      <img id="splash-logo" src="" alt="" class="splash-logo-img"/>
+    </div>
+    <div class="splash-name" id="splash-name"></div>
+    <div class="splash-sub">Admin Dashboard</div>
+    <div class="splash-bar"><div class="splash-bar-fill" id="splash-fill"></div></div>
+  </div>
+</div>
 <div class="admin-layout">
 
 <!-- ════ SIDEBAR ════════════════════════════════════════════ -->
@@ -293,454 +307,552 @@
 
 <script src="../assets/js/config.js"></script>
 <script>
-// ══════════════════════════════════════════════════════════
-// AUTH GUARD — must be first
-// ══════════════════════════════════════════════════════════
-let currentUser = null;
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.replace('login.html'); return; }
+// ─────────────────────────────────────────────────────────
+// SPLASH
+// ─────────────────────────────────────────────────────────
+let _sTick = null;
+function splashGo() {
+  let p = 0;
+  _sTick = setInterval(function() {
+    p = Math.min(p + Math.random() * 14, 85);
+    var el = document.getElementById('splash-fill');
+    if (el) el.style.width = p + '%';
+  }, 120);
+}
+function splashStop() {
+  clearInterval(_sTick);
+  var el = document.getElementById('splash-fill');
+  if (el) el.style.width = '100%';
+  setTimeout(function() {
+    var s = document.getElementById('splash');
+    if (s) { s.classList.add('out'); setTimeout(function() { s.remove(); }, 600); }
+  }, 350);
+}
+
+// ─────────────────────────────────────────────────────────
+// IDLE LOGOUT — 30 menit tidak ada aktivitas
+// ─────────────────────────────────────────────────────────
+var IDLE_MS = 30 * 60 * 1000;
+var _idleT = null;
+function resetIdle() {
+  clearTimeout(_idleT);
+  _idleT = setTimeout(async function() {
+    await sb.auth.signOut();
+    window.location.replace('login.html');
+  }, IDLE_MS);
+}
+function startIdle() {
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(function(ev) {
+    document.addEventListener(ev, resetIdle, { passive: true });
+  });
+  resetIdle();
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTH GUARD — body hidden sampai session valid
+// ─────────────────────────────────────────────────────────
+var PANELS = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
+var currentUser = null;
+
+splashGo(); // mulai splash sebelum apapun
+
+(async function() {
+  var res = await sb.auth.getSession();
+  var session = res.data.session;
+
+  // Tidak ada session → redirect, body tetap hidden selamanya
+  if (!session) {
+    window.location.replace('login.html');
+    return;
+  }
+
+  // Ada session → tampilkan body
+  document.body.style.visibility = 'visible';
   currentUser = session.user;
   document.getElementById('topbar-email').textContent = currentUser.email;
   document.getElementById('sb-email').textContent     = currentUser.email;
   document.getElementById('prof-email').value         = currentUser.email;
+
+  // Baca hash untuk restore panel (agar refresh tetap di panel yang sama)
+  var hash = window.location.hash.replace('#','').trim();
+  var active = PANELS.indexOf(hash) >= 0 ? hash : 'dashboard';
+
+  document.querySelectorAll('.sb-item').forEach(function(i) { i.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  var nav   = document.querySelector('.sb-item[data-panel="' + active + '"]');
+  var panel = document.getElementById('panel-' + active);
+  if (nav)   nav.classList.add('active');
+  if (panel) panel.classList.add('active');
+  var topEl = document.getElementById('topbar-title');
+  if (topEl && nav) topEl.textContent = nav.textContent.trim();
+
+  // Load branding dulu (isi splash name sebelum hilang)
+  await loadSidebarBranding();
+
+  // Load data panel aktif
   loadStats();
-  loadSidebarBranding();
+  if (panelLoaders[active]) panelLoaders[active]();
+
+  splashStop();
+
+  // Pantau logout dari tab lain
+  sb.auth.onAuthStateChange(function(event) {
+    if (event === 'SIGNED_OUT') window.location.replace('login.html');
+  });
+
+  // Aktifkan idle watcher
+  startIdle();
 })();
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // TOAST
-// ══════════════════════════════════════════════════════════
-function toast(msg, type='success') {
-  const el = document.getElementById('global-toast');
-  el.textContent = msg; el.className = `toast toast-${type} show`;
-  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 3500);
+// ─────────────────────────────────────────────────────────
+function toast(msg, type) {
+  type = type || 'success';
+  var el = document.getElementById('global-toast');
+  el.textContent = msg;
+  el.className = 'toast toast-' + type + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.classList.remove('show'); }, 3500);
 }
 
-// ══════════════════════════════════════════════════════════
-// NAVIGATION
-// ══════════════════════════════════════════════════════════
-const panelLoaders = {
-  staff:    ()=>loadStaff(),
-  news:     ()=>loadNews(),
-  pages:    ()=>loadPages(),
-  settings: ()=>loadSettings(),
-  media:    ()=>loadMedia(),
-  sambutan: ()=>loadSambutan(),
-  profile:  ()=>{},
+// ─────────────────────────────────────────────────────────
+// NAVIGASI — hash URL agar refresh tetap di panel yang sama
+// ─────────────────────────────────────────────────────────
+var panelLoaders = {
+  dashboard: function() { loadStats(); },
+  staff:     function() { loadStaff(); },
+  news:      function() { loadNews(); },
+  pages:     function() { loadPages(); },
+  settings:  function() { loadSettings(); },
+  media:     function() { loadMedia(); },
+  sambutan:  function() { loadSambutan(); },
+  profile:   function() {}
 };
 
-document.getElementById('sb-nav').addEventListener('click', e => {
-  const item = e.target.closest('.sb-item[data-panel]'); if(!item) return;
-  const panel = item.dataset.panel;
-  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+document.getElementById('sb-nav').addEventListener('click', function(e) {
+  var item = e.target.closest('.sb-item[data-panel]');
+  if (!item) return;
+  var p = item.dataset.panel;
+  document.querySelectorAll('.sb-item').forEach(function(i) { i.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(x) { x.classList.remove('active'); });
   item.classList.add('active');
-  document.getElementById('panel-'+panel).classList.add('active');
+  document.getElementById('panel-' + p).classList.add('active');
   document.getElementById('topbar-title').textContent = item.textContent.trim();
-  if(panelLoaders[panel]) panelLoaders[panel]();
-  // Mobile: close sidebar
-  if(window.innerWidth<768) document.getElementById('sidebar').classList.remove('open');
+  if (panelLoaders[p]) panelLoaders[p]();
+  // Tulis hash — refresh akan baca ini
+  history.replaceState(null, '', location.pathname + '#' + p);
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
 });
 
-// Mobile sidebar toggle
-const sbToggle = document.getElementById('sb-toggle');
-if(window.innerWidth<768) sbToggle.style.display='block';
-sbToggle.addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
+var sbToggle = document.getElementById('sb-toggle');
+if (window.innerWidth < 768) sbToggle.style.display = 'block';
+sbToggle.addEventListener('click', function() {
+  document.getElementById('sidebar').classList.toggle('open');
+});
 
-// Click outside modal
-document.querySelectorAll('.modal-overlay').forEach(o=>{
-  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+document.querySelectorAll('.modal-overlay').forEach(function(o) {
+  o.addEventListener('click', function(e) {
+    if (e.target === o) o.classList.remove('open');
+  });
 });
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 
 async function doLogout() {
+  clearTimeout(_idleT);
   await sb.auth.signOut();
   window.location.replace('login.html');
 }
 
-// ══════════════════════════════════════════════════════════
-// RICH TEXT EDITOR (lightweight, no deps)
-// ══════════════════════════════════════════════════════════
-function createRTE(containerId, initialHTML='') {
-  const container = document.getElementById(containerId);
-  const toolbar = [
+// ─────────────────────────────────────────────────────────
+// RICH TEXT EDITOR
+// ─────────────────────────────────────────────────────────
+function createRTE(containerId, initialHTML) {
+  initialHTML = initialHTML || '';
+  var container = document.getElementById(containerId);
+  var toolbar = [
     ['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],
     ['|'],
     ['insertOrderedList','1.'],['insertUnorderedList','•'],
     ['|'],
     ['formatBlock:H3','H3'],['formatBlock:P','¶'],
     ['|'],
-    ['createLink','🔗'],
+    ['createLink','🔗']
   ];
-  const tbHtml = toolbar.map(([cmd,label])=>{
-    if(cmd==='|') return `<span style="width:1px;background:var(--gray-4);align-self:stretch;margin:0 .2rem;display:inline-block"></span>`;
-    return `<button type="button" class="rte-btn" data-cmd="${cmd}" title="${cmd}">${label}</button>`;
+  var tbHtml = toolbar.map(function(t) {
+    var cmd = t[0], label = t[1];
+    if (cmd === '|') return '<span style="width:1px;background:var(--gray-4);align-self:stretch;margin:0 .2rem;display:inline-block"></span>';
+    return '<button type="button" class="rte-btn" data-cmd="' + cmd + '">' + label + '</button>';
   }).join('');
-  container.innerHTML = `
-    <div class="rte-toolbar">${tbHtml}</div>
-    <div class="rte-editor" contenteditable="true">${initialHTML}</div>`;
-
-  const editor = container.querySelector('.rte-editor');
-  container.querySelector('.rte-toolbar').addEventListener('click', e=>{
-    const btn = e.target.closest('[data-cmd]'); if(!btn) return;
-    const cmd = btn.dataset.cmd;
-    if(cmd.startsWith('formatBlock:')) {
+  container.innerHTML = '<div class="rte-toolbar">' + tbHtml + '</div><div class="rte-editor" contenteditable="true">' + initialHTML + '</div>';
+  var editor = container.querySelector('.rte-editor');
+  container.querySelector('.rte-toolbar').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-cmd]');
+    if (!btn) return;
+    var cmd = btn.dataset.cmd;
+    if (cmd.startsWith('formatBlock:')) {
       document.execCommand('formatBlock', false, cmd.split(':')[1]);
-    } else if(cmd==='createLink') {
-      const url = prompt('Masukkan URL:','https://');
-      if(url) document.execCommand('createLink', false, url);
+    } else if (cmd === 'createLink') {
+      var url = prompt('Masukkan URL:', 'https://');
+      if (url) document.execCommand('createLink', false, url);
     } else {
       document.execCommand(cmd, false, null);
     }
     editor.focus();
   });
-  return { getHTML: ()=>editor.innerHTML, setHTML: (h)=>{ editor.innerHTML=h; } };
+  return {
+    getHTML: function() { return editor.innerHTML; },
+    setHTML: function(h) { editor.innerHTML = h; }
+  };
 }
 
-let rteMap = {}; // Store RTE instances
-
-// ══════════════════════════════════════════════════════════
-// SIDEBAR BRANDING
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
+// SIDEBAR BRANDING — isi juga splash
+// ─────────────────────────────────────────────────────────
 async function loadSidebarBranding() {
-  const { data } = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
-  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
-  if(s.app_name) { document.getElementById('sb-name').textContent=s.app_name; document.title=`Dashboard — ${s.app_name}`; }
-  if(s.logo_url) document.getElementById('sb-logo').src=s.logo_url;
+  var res = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
+  var s = {};
+  (res.data || []).forEach(function(r) { s[r.key_name] = r.value_text; });
+  if (s.app_name) {
+    document.getElementById('sb-name').textContent = s.app_name;
+    document.title = 'Dashboard — ' + s.app_name;
+    var sn = document.getElementById('splash-name');
+    if (sn) sn.textContent = s.app_name;
+  }
+  if (s.logo_url) {
+    var sbLogo = document.getElementById('sb-logo');
+    if (sbLogo) sbLogo.src = s.logo_url;
+    var spLogo = document.getElementById('splash-logo');
+    if (spLogo) spLogo.src = s.logo_url;
+  }
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // STATS
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 async function loadStats() {
-  const [{ count: cn },{ count: cs },{ count: cpc }] = await Promise.all([
+  var results = await Promise.all([
     sb.from('news_posts').select('*',{count:'exact',head:true}),
     sb.from('staff_hierarchy').select('*',{count:'exact',head:true}),
-    sb.from('page_contents').select('*',{count:'exact',head:true}),
+    sb.from('page_contents').select('*',{count:'exact',head:true})
   ]);
+  var cn = results[0].count || 0;
+  var cs = results[1].count || 0;
+  var cp = results[2].count || 0;
   document.getElementById('stats-row').innerHTML = [
-    [cn??0,'Berita'],
-    [cs??0,'Pegawai'],
-    [cpc??0,'Halaman Konten'],
-    ['✅','Sistem Aktif'],
-  ].map(([n,l])=>`<div class="stat-card"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join('');
+    [cn,'Berita'],[cs,'Pegawai'],[cp,'Konten Halaman'],['✅','Sistem Aktif']
+  ].map(function(x) {
+    return '<div class="stat-card"><div class="num">' + x[0] + '</div><div class="lbl">' + x[1] + '</div></div>';
+  }).join('');
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // SETTINGS
-// ══════════════════════════════════════════════════════════
-const CFG_KEYS = ['app_name','app_tagline','logo_url','hero_image_url','hero_description','office_address','office_phone','office_email','external_visit_link','socmed_instagram','socmed_facebook','socmed_youtube'];
+// ─────────────────────────────────────────────────────────
+var CFG_KEYS = ['app_name','app_tagline','logo_url','hero_image_url','hero_description','office_address','office_phone','office_email','external_visit_link','socmed_instagram','socmed_facebook','socmed_youtube'];
 
 async function loadSettings() {
-  const { data } = await sb.from('web_settings').select('key_name,value_text');
-  const s = {}; (data||[]).forEach(r=>s[r.key_name]=r.value_text);
-  CFG_KEYS.forEach(k=>{ const el=document.getElementById('cfg-'+k); if(el&&s[k]) el.value=s[k]; });
+  var res = await sb.from('web_settings').select('key_name,value_text');
+  var s = {};
+  (res.data || []).forEach(function(r) { s[r.key_name] = r.value_text; });
+  CFG_KEYS.forEach(function(k) {
+    var el = document.getElementById('cfg-' + k);
+    if (el && s[k]) el.value = s[k];
+  });
 }
 
 async function saveSettings() {
-  const btn = document.querySelector('#panel-settings .btn-gold');
-  btn.disabled=true; btn.innerHTML='<div class="spinner-sm"></div> Menyimpan...';
-  const upserts = CFG_KEYS.map(k=>({ key_name:k, value_text:(document.getElementById('cfg-'+k)?.value||'').trim() }));
-  const { error } = await sb.from('web_settings').upsert(upserts, {onConflict:'key_name'});
-  btn.disabled=false; btn.innerHTML='💾 Simpan Semua';
-  if(error) toast('Gagal: '+error.message,'error');
+  var btn = document.querySelector('#panel-settings .btn-gold');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner-sm"></div> Menyimpan...';
+  var upserts = CFG_KEYS.map(function(k) {
+    var el = document.getElementById('cfg-' + k);
+    return { key_name: k, value_text: el ? el.value.trim() : '' };
+  });
+  var res = await sb.from('web_settings').upsert(upserts, {onConflict:'key_name'});
+  btn.disabled = false; btn.innerHTML = '💾 Simpan Semua';
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
   else { toast('Settings disimpan!'); loadSidebarBranding(); }
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // SAMBUTAN
-// ══════════════════════════════════════════════════════════
-let smbRTE = null;
+// ─────────────────────────────────────────────────────────
+var smbRTE = null;
 async function loadSambutan() {
-  if(!smbRTE) smbRTE = createRTE('smb-content-rte','');
-  const { data } = await sb.from('sambutan').select('*').limit(1).single();
-  if(data) {
-    document.getElementById('smb-name').value     = data.name||'';
-    document.getElementById('smb-position').value = data.position||'Kepala Lembaga Pemasyarakatan';
-    document.getElementById('smb-title').value    = data.title||'';
-    document.getElementById('smb-photo').value    = data.photo_url||'';
-    smbRTE.setHTML(data.content||'');
+  if (!smbRTE) smbRTE = createRTE('smb-content-rte', '');
+  var res = await sb.from('sambutan').select('*').limit(1).single();
+  var data = res.data;
+  if (data) {
+    document.getElementById('smb-name').value     = data.name || '';
+    document.getElementById('smb-position').value = data.position || '';
+    document.getElementById('smb-title').value    = data.title || '';
+    document.getElementById('smb-photo').value    = data.photo_url || '';
+    smbRTE.setHTML(data.content || '');
   }
 }
 
 async function saveSambutan() {
-  const btn = document.querySelector('#panel-sambutan .btn-gold');
-  btn.disabled=true; btn.innerHTML='Menyimpan...';
-  const payload = {
+  var btn = document.querySelector('#panel-sambutan .btn-gold');
+  btn.disabled = true; btn.innerHTML = 'Menyimpan...';
+  var payload = {
     name:      document.getElementById('smb-name').value.trim(),
     position:  document.getElementById('smb-position').value.trim(),
     title:     document.getElementById('smb-title').value.trim(),
-    photo_url: document.getElementById('smb-photo').value.trim()||null,
-    content:   smbRTE.getHTML(),
+    photo_url: document.getElementById('smb-photo').value.trim() || null,
+    content:   smbRTE.getHTML()
   };
-  // Upsert (sambutan only has 1 row — use id if exists)
-  const { data: existing } = await sb.from('sambutan').select('id').limit(1).single();
-  let error;
-  if(existing) ({ error } = await sb.from('sambutan').update(payload).eq('id',existing.id));
-  else         ({ error } = await sb.from('sambutan').insert(payload));
-  btn.disabled=false; btn.innerHTML='💾 Simpan';
-  if(error) toast('Gagal: '+error.message,'error');
+  var ex = await sb.from('sambutan').select('id').limit(1).single();
+  var res;
+  if (ex.data) res = await sb.from('sambutan').update(payload).eq('id', ex.data.id);
+  else         res = await sb.from('sambutan').insert(payload);
+  btn.disabled = false; btn.innerHTML = '💾 Simpan';
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
   else toast('Sambutan disimpan!');
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // STAFF
-// ══════════════════════════════════════════════════════════
-let staffAll=[], staffPage=1; const STAFF_PER=10;
+// ─────────────────────────────────────────────────────────
+var staffAll = [], staffPage = 1;
+var STAFF_PER = 10;
 
 async function loadStaff() {
-  document.getElementById('staff-tbody').innerHTML='<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
-  const { data } = await sb.from('staff_hierarchy').select('*').order('order_priority');
-  staffAll = data||[];
+  document.getElementById('staff-tbody').innerHTML = '<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
+  var res = await sb.from('staff_hierarchy').select('*').order('order_priority');
+  staffAll = res.data || [];
   renderStaffTable();
 }
 
 function renderStaffTable() {
-  const tbody = document.getElementById('staff-tbody');
-  const pag   = document.getElementById('staff-pag');
-  const total = staffAll.length;
-  const pages = Math.ceil(total/STAFF_PER);
-  const slice = staffAll.slice((staffPage-1)*STAFF_PER, staffPage*STAFF_PER);
-
-  if(!slice.length) { tbody.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👥</div><p>Belum ada staff.</p></div></td></tr>'; pag.innerHTML=''; return; }
-
-  tbody.innerHTML = slice.map(s=>{
-    const init = s.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    const img  = s.image_url
-      ? `<img class="td-thumb" data-src="${s.image_url}" src="" loading="lazy" style="background:var(--gray-5)">`
-      : `<div class="td-thumb-ph">${init}</div>`;
-    return `<tr>
-      <td>${img}</td>
-      <td><strong>${s.name}</strong></td>
-      <td>${s.position}</td>
-      <td><span class="badge badge-navy">${s.order_priority}</span></td>
-      <td><div class="td-actions">
-        <button class="btn btn-outline btn-sm" onclick='editStaff(${JSON.stringify(s)})'>✏️ Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}')">🗑️</button>
-      </div></td>
-    </tr>`;
+  var tbody = document.getElementById('staff-tbody');
+  var pag   = document.getElementById('staff-pag');
+  var pages = Math.ceil(staffAll.length / STAFF_PER);
+  var slice = staffAll.slice((staffPage-1)*STAFF_PER, staffPage*STAFF_PER);
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👥</div><p>Belum ada staff.</p></div></td></tr>';
+    pag.innerHTML = ''; return;
+  }
+  tbody.innerHTML = slice.map(function(s) {
+    var init = s.name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+    var img  = s.image_url
+      ? '<img class="td-thumb" src="' + s.image_url + '" loading="lazy">'
+      : '<div class="td-thumb-ph">' + init + '</div>';
+    var sj = JSON.stringify(s).replace(/"/g,'&quot;');
+    return '<tr><td>' + img + '</td><td><strong>' + s.name + '</strong></td><td>' + s.position + '</td>'
+      + '<td><span class="badge badge-navy">' + s.order_priority + '</span></td>'
+      + '<td><div class="td-actions">'
+      + '<button class="btn btn-outline btn-sm" onclick='editStaff(' + JSON.stringify(s).replace(/'/g,"&#39;") + ')'>✏️ Edit</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="deleteStaff('' + s.id + '')">🗑️</button>'
+      + '</div></td></tr>';
   }).join('');
-  // Lazy images in table
-  tbody.querySelectorAll('img[data-src]').forEach(img=>{
-    img.src=img.dataset.src; img.removeAttribute('data-src');
-  });
-  buildPag(pag, pages, staffPage, p=>{ staffPage=p; renderStaffTable(); });
+  buildPag(pag, pages, staffPage, function(p) { staffPage = p; renderStaffTable(); });
 }
 
-function openStaffModal(s=null) {
-  document.getElementById('staff-modal-title').textContent = s?'Edit Staff':'Tambah Staff';
-  document.getElementById('staff-id').value       = s?.id||'';
-  document.getElementById('staff-name').value     = s?.name||'';
-  document.getElementById('staff-position').value = s?.position||'';
-  document.getElementById('staff-order').value    = s?.order_priority??99;
-  document.getElementById('staff-img-url').value  = s?.image_url||'';
-  const prev = document.getElementById('staff-img-preview');
-  if(s?.image_url){ prev.src=s.image_url; prev.style.display='block'; }
-  else              prev.style.display='none';
+function openStaffModal(s) {
+  s = s || null;
+  document.getElementById('staff-modal-title').textContent = s ? 'Edit Staff' : 'Tambah Staff';
+  document.getElementById('staff-id').value       = s ? s.id : '';
+  document.getElementById('staff-name').value     = s ? s.name : '';
+  document.getElementById('staff-position').value = s ? s.position : '';
+  document.getElementById('staff-order').value    = s ? s.order_priority : 99;
+  document.getElementById('staff-img-url').value  = s ? (s.image_url || '') : '';
+  var prev = document.getElementById('staff-img-preview');
+  if (s && s.image_url) { prev.src = s.image_url; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
   openModal('modal-staff');
 }
 
-document.getElementById('staff-img-url').addEventListener('input', e=>{
-  const prev = document.getElementById('staff-img-preview');
-  if(e.target.value){ prev.src=e.target.value; prev.style.display='block'; }
-  else                prev.style.display='none';
+document.getElementById('staff-img-url').addEventListener('input', function(e) {
+  var prev = document.getElementById('staff-img-preview');
+  if (e.target.value) { prev.src = e.target.value; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
 });
 
 function editStaff(s) { openStaffModal(s); }
 
 async function saveStaff() {
-  const id  = document.getElementById('staff-id').value;
-  const name= document.getElementById('staff-name').value.trim();
-  const pos = document.getElementById('staff-position').value.trim();
-  if(!name||!pos){ toast('Nama dan jabatan wajib diisi!','error'); return; }
-  const payload = { name, position:pos, order_priority:parseInt(document.getElementById('staff-order').value)||99, image_url:document.getElementById('staff-img-url').value.trim()||null };
-  let error;
-  if(id) ({ error }=await sb.from('staff_hierarchy').update(payload).eq('id',id));
-  else   ({ error }=await sb.from('staff_hierarchy').insert(payload));
-  if(error) toast('Error: '+error.message,'error');
-  else { toast(id?'Staff diperbarui!':'Staff ditambahkan!'); closeModal('modal-staff'); loadStaff(); loadStats(); }
+  var id  = document.getElementById('staff-id').value;
+  var name= document.getElementById('staff-name').value.trim();
+  var pos = document.getElementById('staff-position').value.trim();
+  if (!name || !pos) { toast('Nama dan jabatan wajib diisi!','error'); return; }
+  var payload = {
+    name: name, position: pos,
+    order_priority: parseInt(document.getElementById('staff-order').value) || 99,
+    image_url: document.getElementById('staff-img-url').value.trim() || null
+  };
+  var res;
+  if (id) res = await sb.from('staff_hierarchy').update(payload).eq('id', id);
+  else    res = await sb.from('staff_hierarchy').insert(payload);
+  if (res.error) toast('Error: ' + res.error.message, 'error');
+  else { toast(id ? 'Staff diperbarui!' : 'Staff ditambahkan!'); closeModal('modal-staff'); loadStaff(); loadStats(); }
 }
 
 async function deleteStaff(id) {
-  if(!confirm('Hapus data staff ini?')) return;
-  const { error } = await sb.from('staff_hierarchy').delete().eq('id',id);
-  if(error) toast('Gagal: '+error.message,'error');
+  if (!confirm('Hapus data staff ini?')) return;
+  var res = await sb.from('staff_hierarchy').delete().eq('id', id);
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
   else { toast('Staff dihapus.'); loadStaff(); loadStats(); }
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // NEWS
-// ══════════════════════════════════════════════════════════
-let newsAll=[], newsPage=1; const NEWS_PER=10;
-let newsRTE = null;
+// ─────────────────────────────────────────────────────────
+var newsAll = [], newsPage = 1;
+var NEWS_PER = 10;
+var newsRTE = null;
 
 async function loadNews() {
-  document.getElementById('news-tbody').innerHTML='<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
-  const { data } = await sb.from('news_posts').select('*').order('created_at',{ascending:false});
-  newsAll = data||[];
+  document.getElementById('news-tbody').innerHTML = '<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
+  var res = await sb.from('news_posts').select('*').order('created_at',{ascending:false});
+  newsAll = res.data || [];
   renderNewsTable();
 }
 
 function renderNewsTable() {
-  const tbody = document.getElementById('news-tbody');
-  const pag   = document.getElementById('news-pag');
-  const pages = Math.ceil(newsAll.length/NEWS_PER);
-  const slice = newsAll.slice((newsPage-1)*NEWS_PER, newsPage*NEWS_PER);
-
-  if(!slice.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📰</div><p>Belum ada berita.</p></div></td></tr>'; pag.innerHTML=''; return; }
-
-  tbody.innerHTML = slice.map(n=>{
-    const date = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
-    const img  = n.thumbnail_url
-      ? `<img class="td-thumb" src="${n.thumbnail_url}" loading="lazy" style="background:var(--gray-5)">`
-      : `<div class="td-thumb-ph" style="font-size:.7rem">IMG</div>`;
-    const title = n.title.length>55?n.title.substring(0,55)+'…':n.title;
-    return `<tr>
-      <td>${img}</td>
-      <td><strong>${title}</strong></td>
-      <td>${n.author||'—'}</td>
-      <td>${date}</td>
-      <td><div class="td-actions">
-        <button class="btn btn-outline btn-sm" onclick='editNews(${JSON.stringify(n).replace(/'/g,"&#39;")})'>✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteNews('${n.id}')">🗑️</button>
-      </div></td>
-    </tr>`;
+  var tbody = document.getElementById('news-tbody');
+  var pag   = document.getElementById('news-pag');
+  var pages = Math.ceil(newsAll.length / NEWS_PER);
+  var slice = newsAll.slice((newsPage-1)*NEWS_PER, newsPage*NEWS_PER);
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📰</div><p>Belum ada berita.</p></div></td></tr>';
+    pag.innerHTML = ''; return;
+  }
+  tbody.innerHTML = slice.map(function(n) {
+    var date  = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+    var img   = n.thumbnail_url ? '<img class="td-thumb" src="' + n.thumbnail_url + '" loading="lazy">' : '<div class="td-thumb-ph" style="font-size:.7rem">IMG</div>';
+    var title = n.title.length > 55 ? n.title.substring(0,55) + '…' : n.title;
+    var ns    = JSON.stringify(n).replace(/'/g,"&#39;");
+    return '<tr><td>' + img + '</td><td><strong>' + title + '</strong></td><td>' + (n.author||'—') + '</td><td>' + date + '</td>'
+      + '<td><div class="td-actions">'
+      + '<button class="btn btn-outline btn-sm" onclick='editNews(' + ns + ')'>✏️</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="deleteNews('' + n.id + '')">🗑️</button>'
+      + '</div></td></tr>';
   }).join('');
-  buildPag(pag, pages, newsPage, p=>{ newsPage=p; renderNewsTable(); });
+  buildPag(pag, pages, newsPage, function(p) { newsPage = p; renderNewsTable(); });
 }
 
-function openNewsModal(n=null) {
-  document.getElementById('news-modal-title').textContent = n?'Edit Berita':'Tambah Berita';
-  document.getElementById('news-id').value        = n?.id||'';
-  document.getElementById('news-title').value     = n?.title||'';
-  document.getElementById('news-author').value    = n?.author||'';
-  document.getElementById('news-thumbnail').value = n?.thumbnail_url||'';
-  // Init or reset RTE
-  if(!newsRTE) newsRTE = createRTE('news-content-rte', n?.content||'');
-  else         newsRTE.setHTML(n?.content||'');
+function openNewsModal(n) {
+  n = n || null;
+  document.getElementById('news-modal-title').textContent = n ? 'Edit Berita' : 'Tambah Berita';
+  document.getElementById('news-id').value        = n ? n.id : '';
+  document.getElementById('news-title').value     = n ? n.title : '';
+  document.getElementById('news-author').value    = n ? (n.author || '') : '';
+  document.getElementById('news-thumbnail').value = n ? (n.thumbnail_url || '') : '';
+  if (!newsRTE) newsRTE = createRTE('news-content-rte', n ? (n.content||'') : '');
+  else          newsRTE.setHTML(n ? (n.content||'') : '');
   openModal('modal-news');
 }
 
 function editNews(n) { openNewsModal(n); }
 
 async function saveNews() {
-  const id    = document.getElementById('news-id').value;
-  const title = document.getElementById('news-title').value.trim();
-  if(!title){ toast('Judul wajib diisi!','error'); return; }
-  const payload = {
-    title,
-    author:        document.getElementById('news-author').value.trim()||null,
-    content:       newsRTE?newsRTE.getHTML():null,
-    thumbnail_url: document.getElementById('news-thumbnail').value.trim()||null,
+  var id    = document.getElementById('news-id').value;
+  var title = document.getElementById('news-title').value.trim();
+  if (!title) { toast('Judul wajib diisi!','error'); return; }
+  var payload = {
+    title: title,
+    author:        document.getElementById('news-author').value.trim() || null,
+    content:       newsRTE ? newsRTE.getHTML() : null,
+    thumbnail_url: document.getElementById('news-thumbnail').value.trim() || null
   };
-  let error;
-  if(id) ({ error }=await sb.from('news_posts').update(payload).eq('id',id));
-  else   ({ error }=await sb.from('news_posts').insert(payload));
-  if(error) toast('Error: '+error.message,'error');
-  else { toast(id?'Berita diperbarui!':'Berita ditambahkan!'); closeModal('modal-news'); loadNews(); loadStats(); }
+  var res;
+  if (id) res = await sb.from('news_posts').update(payload).eq('id', id);
+  else    res = await sb.from('news_posts').insert(payload);
+  if (res.error) toast('Error: ' + res.error.message, 'error');
+  else { toast(id ? 'Berita diperbarui!' : 'Berita ditambahkan!'); closeModal('modal-news'); loadNews(); loadStats(); }
 }
 
 async function deleteNews(id) {
-  if(!confirm('Hapus berita ini?')) return;
-  const { error } = await sb.from('news_posts').delete().eq('id',id);
-  if(error) toast('Gagal: '+error.message,'error');
+  if (!confirm('Hapus berita ini?')) return;
+  var res = await sb.from('news_posts').delete().eq('id', id);
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
   else { toast('Berita dihapus.'); loadNews(); loadStats(); }
 }
 
-// ══════════════════════════════════════════════════════════
-// PAGE CONTENTS
-// ══════════════════════════════════════════════════════════
-const PAGE_DEFS = [
-  { key:'visi-misi',        label:'🏛️ Visi & Misi',           hint:'Tampil di halaman Profil. Gunakan H3 untuk sub-judul, bullet untuk misi.' },
-  { key:'alur-kunjungan',   label:'📋 Alur Kunjungan',         hint:'Tampil di Layanan > Alur Kunjungan. Gunakan H3 untuk setiap langkah.' },
+// ─────────────────────────────────────────────────────────
+// PAGE CONTENTS — tombol Edit pakai index, bukan JSON.stringify
+// ─────────────────────────────────────────────────────────
+var PAGE_DEFS = [
+  { key:'visi-misi',        label:'🏛️ Visi & Misi',           hint:'Tampil di halaman Profil.' },
+  { key:'alur-kunjungan',   label:'📋 Alur Kunjungan',         hint:'Tampil di Layanan > Alur Kunjungan.' },
   { key:'alur-penitipan',   label:'📦 Alur Penitipan Barang',  hint:'Tampil di Layanan > Penitipan Barang.' },
   { key:'syarat-ketentuan', label:'📄 Syarat & Ketentuan',     hint:'Tampil di Layanan > Syarat & Ketentuan.' },
-  { key:'kontak',           label:'📞 Kontak & Jam Pelayanan', hint:'Jika diisi, akan menggantikan data dari Settings. Kosongkan untuk gunakan data Settings.' },
+  { key:'kontak',           label:'📞 Kontak & Jam Pelayanan', hint:'Kosongkan untuk gunakan data dari Settings.' }
 ];
-
-let pageRTE = null;
+var pageRTE = null;
+var _pageData = {};
 
 async function loadPages() {
-  const { data } = await sb.from('page_contents').select('page_name,body_text');
-  const pc = {}; (data||[]).forEach(p=>pc[p.page_name]=p.body_text);
-  document.getElementById('pages-list').innerHTML = PAGE_DEFS.map(def=>{
-    const preview = pc[def.key]?.replace(/<[^>]*>/g,'').substring(0,120)||'Belum ada konten';
-    return `<div class="settings-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
-      <div style="flex:1">
-        <div style="font-weight:700;color:var(--navy);margin-bottom:.25rem">${def.label}</div>
-        <div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">${def.hint}</div>
-        <div style="font-size:.8rem;color:var(--gray-2);font-style:italic">${preview}…</div>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick='openPageModal(${JSON.stringify(def)},${JSON.stringify(pc[def.key]||"")})'>✏️ Edit</button>
-    </div>`;
-  }).join('');
+  var res = await sb.from('page_contents').select('page_name,body_text');
+  var pc = {};
+  (res.data || []).forEach(function(p) { pc[p.page_name] = p.body_text; });
+  _pageData = pc;
+  var html = '';
+  for (var i = 0; i < PAGE_DEFS.length; i++) {
+    var def = PAGE_DEFS[i];
+    var preview = (pc[def.key] || '').replace(/<[^>]*>/g,'').substring(0,120) || 'Belum ada konten';
+    html += '<div class="settings-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">'
+          + '<div style="flex:1">'
+          + '<div style="font-weight:700;color:var(--navy);margin-bottom:.25rem">' + def.label + '</div>'
+          + '<div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">' + def.hint + '</div>'
+          + '<div style="font-size:.8rem;color:var(--gray-2);font-style:italic">' + preview + '…</div>'
+          + '</div>'
+          + '<button class="btn btn-outline btn-sm" onclick="openPageByIdx(' + i + ')">✏️ Edit</button>'
+          + '</div>';
+  }
+  document.getElementById('pages-list').innerHTML = html;
 }
 
-function openPageModal(def, content) {
-  document.getElementById('page-modal-title').textContent = `Edit: ${def.label}`;
+function openPageByIdx(i) {
+  var def     = PAGE_DEFS[i];
+  var content = _pageData[def.key] || '';
+  document.getElementById('page-modal-title').textContent = 'Edit: ' + def.label;
   document.getElementById('page-key').value               = def.key;
   document.getElementById('page-editor-hint').textContent = def.hint;
-  if(!pageRTE) pageRTE = createRTE('page-content-rte', content);
-  else         pageRTE.setHTML(content);
+  if (!pageRTE) pageRTE = createRTE('page-content-rte', content);
+  else          pageRTE.setHTML(content);
   openModal('modal-page');
 }
 
 async function savePage() {
-  const key  = document.getElementById('page-key').value;
-  const body = pageRTE.getHTML();
-  const { error } = await sb.from('page_contents').upsert({ page_name:key, body_text:body, last_updated:new Date().toISOString() }, {onConflict:'page_name'});
-  if(error) toast('Error: '+error.message,'error');
+  var key  = document.getElementById('page-key').value;
+  var body = pageRTE.getHTML();
+  var res  = await sb.from('page_contents').upsert({ page_name:key, body_text:body, last_updated:new Date().toISOString() }, {onConflict:'page_name'});
+  if (res.error) toast('Error: ' + res.error.message, 'error');
   else { toast('Konten disimpan!'); closeModal('modal-page'); loadPages(); loadStats(); }
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // MEDIA
-// ══════════════════════════════════════════════════════════
-let allMediaFiles = [];
-let currentPreviewKey = '';
+// ─────────────────────────────────────────────────────────
+var allMediaFiles = [];
+var currentPreviewKey = '';
 
 async function loadMedia() {
-  const grid = document.getElementById('media-grid');
+  var grid = document.getElementById('media-grid');
   grid.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
-
   try {
-    const { data:{ session } } = await sb.auth.getSession();
-    const resp = await fetch('/api/media-list', {
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
-    });
-
+    var sr = await sb.auth.getSession();
+    var token = sr.data.session.access_token;
+    var resp = await fetch('/api/media-list', { headers: { 'Authorization': 'Bearer ' + token } });
     if (!resp.ok) throw new Error('Gagal memuat daftar foto');
-    const { files } = await resp.json();
-    allMediaFiles = files || [];
-
+    var json = await resp.json();
+    allMediaFiles = json.files || [];
     if (!allMediaFiles.length) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-        <div class="empty-icon">🖼️</div>
-        <h3>Belum ada foto</h3>
-        <p style="color:var(--gray-2);font-size:.85rem">Klik "Upload Foto" untuk menambahkan gambar</p>
-      </div>`;
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><h3>Belum ada foto</h3><p style="color:var(--gray-2);font-size:.85rem">Klik "Upload Foto" untuk menambahkan gambar</p></div>';
       return;
     }
-
-    grid.innerHTML = allMediaFiles.map(f => `
-      <div class="media-item" onclick="openMediaPreview('${f.key}','${f.url}')" title="${f.name}">
-        <img src="${f.url}" loading="lazy"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-          style="width:100%;height:140px;object-fit:cover"/>
-        <div style="display:none;height:140px;align-items:center;justify-content:center;font-size:2rem;background:var(--gray-5)">🖼️</div>
-        <div class="media-item-info">
-          <div class="media-item-name" style="font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
-          <div class="media-copy-hint" style="font-size:.7rem;color:var(--gold)">Klik untuk lihat & salin URL</div>
-        </div>
-      </div>`).join('');
-
+    grid.innerHTML = allMediaFiles.map(function(f) {
+      return '<div class="media-item" onclick="openMediaPreview('' + f.key.replace(/'/g,"\'") + '','' + f.url.replace(/'/g,"\'") + '')" title="' + f.name + '">'
+        + '<img src="' + f.url + '" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:140px;object-fit:cover"/>'
+        + '<div style="display:none;height:140px;align-items:center;justify-content:center;font-size:2rem;background:var(--gray-5)">🖼️</div>'
+        + '<div class="media-item-info"><div class="media-item-name" style="font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + f.name + '</div>'
+        + '<div class="media-copy-hint" style="font-size:.7rem;color:var(--gold)">Klik untuk lihat & salin URL</div></div></div>';
+    }).join('');
   } catch(err) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-icon">⚠️</div><h3>Gagal memuat</h3><p>${err.message}</p>
-    </div>`;
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Gagal memuat</h3><p>' + err.message + '</p></div>';
   }
 }
 
@@ -751,127 +863,105 @@ function openMediaPreview(key, url) {
   document.getElementById('preview-filename').textContent = key.split('/').pop();
   openModal('modal-media-preview');
 }
-
 function copyPreviewUrl() {
-  const url = document.getElementById('preview-url').value;
+  var url = document.getElementById('preview-url').value;
   navigator.clipboard.writeText(url)
-    .then(() => { toast('✅ URL disalin!'); closeModal('modal-media-preview'); })
-    .catch(() => { toast('Gagal menyalin.','error'); });
+    .then(function() { toast('✅ URL disalin!'); closeModal('modal-media-preview'); })
+    .catch(function() { toast('Gagal menyalin.','error'); });
 }
-
 async function deleteMediaFromPreview() {
   if (!confirm('Hapus foto ini? Foto yang sudah dipakai di konten akan rusak.')) return;
   try {
-    const { data:{ session } } = await sb.auth.getSession();
-    const resp = await fetch(`/api/media-delete?key=${encodeURIComponent(currentPreviewKey)}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    var sr = await sb.auth.getSession();
+    var token = sr.data.session.access_token;
+    var resp = await fetch('/api/media-delete?key=' + encodeURIComponent(currentPreviewKey), {
+      method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
     });
     if (!resp.ok) throw new Error('Gagal menghapus');
-    toast('Foto dihapus.');
-    closeModal('modal-media-preview');
-    loadMedia();
-  } catch(err) {
-    toast('Hapus gagal: '+err.message, 'error');
-  }
+    toast('Foto dihapus.'); closeModal('modal-media-preview'); loadMedia();
+  } catch(err) { toast('Hapus gagal: ' + err.message, 'error'); }
 }
 
-// Upload handler
-document.getElementById('btn-upload-media').addEventListener('click', () => {
+document.getElementById('btn-upload-media').addEventListener('click', function() {
   document.getElementById('media-file-input').click();
 });
-
-document.getElementById('media-file-input').addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files);
+document.getElementById('media-file-input').addEventListener('change', async function(e) {
+  var files = Array.from(e.target.files);
   if (!files.length) return;
-
-  const invalid = files.filter(f => !f.type.startsWith('image/'));
+  var invalid = files.filter(function(f) { return !f.type.startsWith('image/'); });
   if (invalid.length) { toast('Hanya file gambar yang diperbolehkan.','error'); return; }
-  const tooBig  = files.filter(f => f.size > 5*1024*1024);
+  var tooBig  = files.filter(function(f) { return f.size > 5*1024*1024; });
   if (tooBig.length) { toast('Ukuran file maksimal 5MB per foto.','error'); return; }
-
-  const wrap = document.getElementById('upload-progress-wrap');
-  const bar  = document.getElementById('upload-progress-bar');
-  const txt  = document.getElementById('upload-progress-text');
+  var wrap = document.getElementById('upload-progress-wrap');
+  var bar  = document.getElementById('upload-progress-bar');
+  var txt  = document.getElementById('upload-progress-text');
   wrap.style.display = 'block';
-
-  const { data:{ session } } = await sb.auth.getSession();
-  let done = 0;
-
-  for (const file of files) {
-    txt.textContent = `Mengupload ${file.name}... (${done+1}/${files.length})`;
-    bar.style.width = `${Math.round((done/files.length)*100)}%`;
-
+  var sr    = await sb.auth.getSession();
+  var token = sr.data.session.access_token;
+  var done  = 0;
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    txt.textContent = 'Mengupload ' + file.name + '... (' + (done+1) + '/' + files.length + ')';
+    bar.style.width = Math.round((done/files.length)*100) + '%';
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const resp = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-        body: fd
-      });
-      const result = await resp.json();
+      var fd = new FormData(); fd.append('file', file);
+      var resp = await fetch('/api/upload', { method:'POST', headers:{'Authorization':'Bearer '+token}, body:fd });
+      var result = await resp.json();
       if (!resp.ok) throw new Error(result.error || 'Upload gagal');
       done++;
-    } catch(err) {
-      toast(`Gagal upload ${file.name}: ${err.message}`, 'error');
-    }
+    } catch(err) { toast('Gagal upload ' + file.name + ': ' + err.message, 'error'); }
   }
-
   bar.style.width = '100%';
-  txt.textContent = `✅ ${done} foto berhasil diupload`;
-  setTimeout(() => { wrap.style.display='none'; bar.style.width='0%'; }, 2000);
-
-  e.target.value = '';
-  loadMedia();
+  txt.textContent = '✅ ' + done + ' foto berhasil diupload';
+  setTimeout(function() { wrap.style.display='none'; bar.style.width='0%'; }, 2000);
+  e.target.value = ''; loadMedia();
 });
 
 function copyUrl(url) {
-  navigator.clipboard.writeText(url).then(()=>toast('URL disalin! ✓')).catch(()=>toast('Gagal menyalin.','error'));
+  navigator.clipboard.writeText(url).then(function(){toast('URL disalin! ✓');}).catch(function(){toast('Gagal menyalin.','error');});
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // PROFILE
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 async function saveEmail() {
-  const email = document.getElementById('prof-email').value.trim();
-  const al = document.getElementById('alert-email');
-  if(!email){ al.innerHTML='<div class="alert alert-danger">Email tidak boleh kosong.</div>'; return; }
-  const { error } = await sb.auth.updateUser({ email });
-  al.innerHTML = error
-    ? `<div class="alert alert-danger">${error.message}</div>`
+  var email = document.getElementById('prof-email').value.trim();
+  var al = document.getElementById('alert-email');
+  if (!email) { al.innerHTML='<div class="alert alert-danger">Email tidak boleh kosong.</div>'; return; }
+  var res = await sb.auth.updateUser({ email: email });
+  al.innerHTML = res.error
+    ? '<div class="alert alert-danger">' + res.error.message + '</div>'
     : '<div class="alert alert-success">Email diperbarui! Cek email konfirmasi jika diminta.</div>';
 }
-
 async function savePassword() {
-  const p1 = document.getElementById('prof-pass1').value;
-  const p2 = document.getElementById('prof-pass2').value;
-  const al = document.getElementById('alert-password');
-  if(!p1||p1.length<6){ al.innerHTML='<div class="alert alert-danger">Password minimal 6 karakter.</div>'; return; }
-  if(p1!==p2){ al.innerHTML='<div class="alert alert-danger">Password tidak cocok.</div>'; return; }
-  const { error } = await sb.auth.updateUser({ password: p1 });
-  al.innerHTML = error
-    ? `<div class="alert alert-danger">${error.message}</div>`
+  var p1 = document.getElementById('prof-pass1').value;
+  var p2 = document.getElementById('prof-pass2').value;
+  var al = document.getElementById('alert-password');
+  if (!p1||p1.length<6) { al.innerHTML='<div class="alert alert-danger">Password minimal 6 karakter.</div>'; return; }
+  if (p1!==p2) { al.innerHTML='<div class="alert alert-danger">Password tidak cocok.</div>'; return; }
+  var res = await sb.auth.updateUser({ password: p1 });
+  al.innerHTML = res.error
+    ? '<div class="alert alert-danger">' + res.error.message + '</div>'
     : '<div class="alert alert-success">✅ Password berhasil diubah!</div>';
-  if(!error){ document.getElementById('prof-pass1').value=''; document.getElementById('prof-pass2').value=''; }
+  if (!res.error) { document.getElementById('prof-pass1').value=''; document.getElementById('prof-pass2').value=''; }
 }
 
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 // PAGINATION HELPER
-// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────
 function buildPag(container, total, current, onChange) {
   container.innerHTML = '';
-  if(total<=1) return;
-  const mk = (label,pg,disabled,active)=>{
-    const b=document.createElement('button');
-    b.className='pg-btn'+(active?' active':'');
-    b.textContent=label; b.disabled=disabled;
-    b.addEventListener('click',()=>onChange(pg));
+  if (total <= 1) return;
+  function mk(label, pg, disabled, active) {
+    var b = document.createElement('button');
+    b.className = 'pg-btn' + (active ? ' active' : '');
+    b.textContent = label; b.disabled = disabled;
+    b.addEventListener('click', function() { onChange(pg); });
     container.appendChild(b);
-  };
-  mk('‹',current-1,current===1);
-  for(let i=1;i<=total;i++) mk(i,i,false,i===current);
-  mk('›',current+1,current===total);
+  }
+  mk('‹', current-1, current===1);
+  for (var i=1; i<=total; i++) mk(i, i, false, i===current);
+  mk('›', current+1, current===total);
 }
 </script>
 </body>
