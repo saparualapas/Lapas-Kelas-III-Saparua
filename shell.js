@@ -32,23 +32,22 @@ const SHELL = {
   // ── Navbar HTML ──────────────────────────────────────────
   navbarHTML(settings, activePage) {
     const links = [
-      { href: '/',          label: 'Beranda',         key: 'home' },
-      { href: '/profil',    label: 'Profil',           key: 'profil' },
-      { href: '/berita',    label: 'Berita & Kegiatan',key: 'berita' },
-      { href: '/layanan',   label: 'Layanan',          key: 'layanan' },
+      { href: 'index',   label: 'Beranda',         key: 'home' },
+      { href: 'profil',  label: 'Profil',           key: 'profil' },
+      { href: 'berita',  label: 'Berita & Kegiatan',key: 'berita' },
+      { href: 'layanan', label: 'Layanan',          key: 'layanan' },
     ];
     const navLinks = links.map(l =>
       `<li><a href="${l.href}.html" class="nav-link${activePage===l.key?' active':''}" data-key="${l.key}">${l.label}</a></li>`
     ).join('');
-    // Admin link shown once at end of navbar only
-    const logoSrc = settings.logo_url || '';
-    const name    = settings.app_name || '';
-    const tagline = settings.app_tagline || '';
+    const logoSrc = settings.logo_url || 'https://placehold.co/44x44/0D1B2A/C9A84C?text=L';
+    const name    = settings.app_name || 'Lapas';
+    const tagline = settings.app_tagline || 'Kementerian Hukum';
     const visitLink = settings.external_visit_link || '#';
     return `
     <nav class="navbar" id="navbar">
       <div class="navbar-brand">
-        ${logoSrc ? `<img src="${logoSrc}" alt="Logo" class="navbar-logo" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><span class="navbar-logo" style="display:none;align-items:center;justify-content:center;font-size:1.5rem;background:var(--navy-2)">🏛️</span>` : `<span class="navbar-logo" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:var(--navy-2)">🏛️</span>`}
+        <img src="${logoSrc}" alt="Logo" class="navbar-logo lazy" loading="lazy" />
         <div class="brand-text">
           <span class="brand-name" id="nav-name">${name}</span>
           <span class="brand-tagline" id="nav-tagline">${tagline}</span>
@@ -58,7 +57,7 @@ const SHELL = {
         ${navLinks}
         <li class="nav-sep"></li>
         <li><a href="${visitLink}" class="nav-cta" id="nav-visit" target="_blank" rel="noopener">🔗 Daftar Kunjungan</a></li>
-        <li><a href="/admin/login.html" class="nav-admin-link" id="nav-admin-link">🔐 Admin</a></li>
+        <li><a href="admin/login.html" class="nav-admin-link" id="nav-admin-link">🔐 Admin</a></li>
       </ul>
       <button class="hamburger" id="hamburger" aria-label="Menu">
         <span></span><span></span><span></span>
@@ -68,7 +67,7 @@ const SHELL = {
 
   // ── Footer HTML ──────────────────────────────────────────
   footerHTML(settings) {
-    const name  = settings.app_name || '';
+    const name  = settings.app_name || 'Lapas';
     const addr  = settings.office_address || '';
     const phone = settings.office_phone || '';
     const email = settings.office_email || '';
@@ -81,7 +80,7 @@ const SHELL = {
       <div class="footer-container">
         <div class="footer-brand">
           <div class="footer-logo-wrap">
-            ${settings.logo_url ? `<img src="${settings.logo_url}" alt="Logo" class="footer-logo" loading="lazy" onerror="this.style.display='none'"/>` : `<span style="font-size:2rem">🏛️</span>`}
+            <img src="${settings.logo_url||'https://placehold.co/52x52/1B3A57/C9A84C?text=L'}" alt="Logo" class="footer-logo lazy" loading="lazy"/>
           </div>
           <h3 class="footer-name">${name}</h3>
           ${addr  ? `<p class="footer-info">📍 ${addr}</p>` : ''}
@@ -96,25 +95,24 @@ const SHELL = {
         <div class="footer-col">
           <h4>Navigasi</h4>
           <ul>
-            <li><a href="/index.html">Beranda</a></li>
-            <li><a href="/profil.html">Profil</a></li>
-            <li><a href="/berita.html">Berita & Kegiatan</a></li>
-            <li><a href="/layanan.html">Layanan</a></li>
+            <li><a href="index.html">Beranda</a></li>
+            <li><a href="profil.html">Profil</a></li>
+            <li><a href="berita.html">Berita & Kegiatan</a></li>
+            <li><a href="layanan.html">Layanan</a></li>
           </ul>
         </div>
         <div class="footer-col">
           <h4>Layanan</h4>
           <ul>
             <li><a href="${vLink}" target="_blank">Daftar Kunjungan</a></li>
-            <li><a href="/layanan.html">Penitipan Barang</a></li>
-            <li><a href="/layanan.html">Syarat & Ketentuan</a></li>
-            <li><a href="/layanan.html">Kontak</a></li>
+            <li><a href="layanan.html">Penitipan Barang</a></li>
+            <li><a href="layanan.html">Syarat & Ketentuan</a></li>
+            <li><a href="layanan.html">Kontak</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© ${new Date().getFullYear()}${name ? " " + name : ""}. Hak Cipta Dilindungi.</span>
-        <a href="/admin/login.html" class="footer-admin-link">Admin</a>
+        <span>© ${new Date().getFullYear()} ${name}. Hak Cipta Dilindungi.</span>
       </div>
     </footer>`;
   },
@@ -139,20 +137,9 @@ const SHELL = {
     const splashSub  = document.getElementById('splash-sub');
     const splashLogo = document.getElementById('splash-logo');
     const splashFill = document.getElementById('splash-fill');
-    if (splashName) splashName.textContent = settings.app_name || '';
-    if (splashSub)  splashSub.textContent  = settings.app_tagline || '';
-    if (splashLogo) {
-    if (settings.logo_url) {
-      splashLogo.src = settings.logo_url;
-    } else {
-      // Show icon placeholder if no logo yet
-      splashLogo.style.display = 'none';
-      const iconEl = document.createElement('span');
-      iconEl.textContent = '🏛️';
-      iconEl.style.cssText = 'font-size:2.8rem;line-height:1';
-      splashLogo.parentNode.insertBefore(iconEl, splashLogo);
-    }
-  }
+    if (splashName) splashName.textContent = settings.app_name || 'LAPAS';
+    if (splashSub)  splashSub.textContent  = settings.app_tagline || 'Sistem Informasi';
+    if (splashLogo && settings.logo_url) splashLogo.src = settings.logo_url;
 
     // Animate progress bar
     let pct = 0;
@@ -166,20 +153,6 @@ const SHELL = {
     if (app) {
       app.insertAdjacentHTML('beforebegin', this.navbarHTML(settings, activePage));
       app.insertAdjacentHTML('afterend',    this.footerHTML(settings));
-    // Add overlay for mobile nav close
-    if (!document.getElementById('nav-overlay')) {
-      const ov = document.createElement('div');
-      ov.id = 'nav-overlay';
-      ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:899;background:rgba(0,0,0,.45)';
-      document.body.appendChild(ov);
-      ov.addEventListener('click', () => {
-        const nav = document.getElementById('navbar-nav');
-        const ham = document.getElementById('hamburger');
-        if (nav) nav.classList.remove('open');
-        if (ham) ham.classList.remove('open');
-        ov.style.display = 'none';
-      });
-    }
     }
 
     // Set document title
@@ -195,8 +168,6 @@ const SHELL = {
       ham.addEventListener('click', () => {
         nav.classList.toggle('open');
         ham.classList.toggle('open');
-        const ov = document.getElementById('nav-overlay');
-        if (ov) ov.style.display = nav.classList.contains('open') ? 'block' : 'none';
       });
     }
 

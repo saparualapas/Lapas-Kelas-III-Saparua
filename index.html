@@ -17,12 +17,11 @@
 <section class="home-hero" id="hero-section">
   <div class="home-hero-content">
     <div class="home-hero-badge">🏛️ Website Resmi</div>
-    <h1 id="hero-title">Selamat Datang di<br/><span id="hero-appname">Lembaga Pemasyarakatan</span></h1>
-    <p id="hero-desc">Memuat...</p>
+    <h1 id="hero-title"><span id="hero-appname"></span></h1>
+    <p id="hero-desc"></p>
     <div class="home-hero-btns">
       <a href="#" id="hero-visit" class="btn btn-gold btn-lg">📋 Daftar Kunjungan</a>
       <a href="layanan.html" class="btn btn-outline-white btn-lg">Lihat Layanan</a>
-      <a href="admin/login.html" class="btn btn-outline-white btn-lg" style="font-size:.82rem;padding:.7rem 1.1rem;">🔐 Login Admin</a>
     </div>
   </div>
   <div class="home-hero-image" id="hero-img-wrap">
@@ -68,13 +67,13 @@
   <div class="sambutan-inner">
     <div class="sambutan-photo-wrap" id="sambutan-photo-wrap">
       <div class="sambutan-photo-ph" id="sambutan-photo-ph">👤</div>
-      <div class="sambutan-badge" id="sambutan-badge">Kepala Lapas</div>
+      <div class="sambutan-badge" id="sambutan-badge"></div>
     </div>
     <div class="sambutan-text-wrap">
       <div class="sambutan-label">Sambutan</div>
-      <h2 class="sambutan-title" id="sambutan-title">Sambutan Kepala Lapas</h2>
-      <div class="sambutan-name" id="sambutan-name">—</div>
-      <div class="sambutan-pos"  id="sambutan-pos">Kepala Lembaga Pemasyarakatan</div>
+      <h2 class="sambutan-title" id="sambutan-title"></h2>
+      <div class="sambutan-name" id="sambutan-name"></div>
+      <div class="sambutan-pos" id="sambutan-pos"></div>
       <blockquote class="sambutan-quote" id="sambutan-quote">
         <div class="loading-center"><div class="spinner" style="border-top-color:var(--gold-2)"></div></div>
       </blockquote>
@@ -199,36 +198,48 @@
     }).join('');
     SHELL.initLazyImages();
 
-    // Slider logic — hitung setelah layout selesai (rAF x2)
-    let sliderPos = 0;
-    const cardW    = 316; // 300px + 16px gap
-    const slideNav = document.getElementById('slide-nav');
-    const prevBtn  = document.getElementById('slide-prev');
-    const nextBtn  = document.getElementById('slide-next');
+    // Slider logic — tidak bergantung offsetWidth (bisa 0 saat splash aktif)
+    var sPos = 0;
+    var CARD_W = 316;
+    var slideNav = document.getElementById('slide-nav');
+    var prevBtn  = document.getElementById('slide-prev');
+    var nextBtn  = document.getElementById('slide-next');
 
-    function getMax() {
-      // Gunakan offsetWidth jika tersedia, fallback ke innerWidth
-      const wrapEl = document.getElementById('news-slider-wrap');
-      const wrapW  = (wrapEl && wrapEl.offsetWidth > 0) ? wrapEl.offsetWidth : window.innerWidth;
-      const visible = Math.max(1, Math.floor(wrapW / cardW));
+    function sliderMax() {
+      // Hitung lebar container dari berbagai sumber
+      var wrap = document.getElementById('news-slider-wrap');
+      var w = 0;
+      if (wrap) {
+        w = wrap.offsetWidth || wrap.clientWidth;
+        if (!w) { var r = wrap.getBoundingClientRect(); w = r.width; }
+      }
+      // Jika masih 0, gunakan window.innerWidth dikurangi estimasi padding
+      if (!w || w < 100) w = Math.max(300, window.innerWidth - 80);
+      var visible = Math.max(1, Math.floor(w / CARD_W));
       return Math.max(0, news.length - visible);
     }
 
-    function updateSlider() {
-      const max = getMax();
-      if (sliderPos > max) sliderPos = max;
-      slider.style.transform = `translateX(-${sliderPos * cardW}px)`;
-      prevBtn.disabled = sliderPos <= 0;
-      nextBtn.disabled = sliderPos >= max;
-      slideNav.style.display = max > 0 ? 'flex' : 'none';
+    function doSlider() {
+      var mx = sliderMax();
+      if (sPos > mx) sPos = mx;
+      slider.style.transform = 'translateX(-' + (sPos * CARD_W) + 'px)';
+      prevBtn.disabled = (sPos <= 0);
+      nextBtn.disabled = (sPos >= mx);
+      slideNav.style.display = mx > 0 ? 'flex' : 'none';
     }
 
-    prevBtn.addEventListener('click', () => { if (sliderPos > 0) { sliderPos--; updateSlider(); } });
-    nextBtn.addEventListener('click', () => { const mx = getMax(); if (sliderPos < mx) { sliderPos++; updateSlider(); } });
+    prevBtn.addEventListener('click', function() {
+      if (sPos > 0) { sPos--; doSlider(); }
+    });
+    nextBtn.addEventListener('click', function() {
+      var mx = sliderMax();
+      if (sPos < mx) { sPos++; doSlider(); }
+    });
 
-    // Hitung setelah 2 frame render — pastikan offsetWidth sudah benar
-    requestAnimationFrame(() => requestAnimationFrame(updateSlider));
-    window.addEventListener('resize', updateSlider);
+    // Jalankan setelah halaman selesai render — rAF x2 + setTimeout fallback
+    requestAnimationFrame(function() { requestAnimationFrame(doSlider); });
+    setTimeout(doSlider, 200);
+    window.addEventListener('resize', doSlider);
   }
 
   // Staff preview (up to 4)
