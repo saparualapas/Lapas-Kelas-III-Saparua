@@ -113,7 +113,6 @@ const SHELL = {
       </div>
       <div class="footer-bottom">
         <span>© ${new Date().getFullYear()} ${name}. Hak Cipta Dilindungi.</span>
-        <a href="admin/login.html" class="footer-admin-link">Admin</a>
       </div>
     </footer>`;
   },

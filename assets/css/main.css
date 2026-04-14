@@ -489,3 +489,170 @@ tbody tr:hover td { background: #FAFAF8; }
   .admin-sidebar.open { transform: translateX(0); }
   .admin-main { margin-left: 0; }
 }
+
+
+/* ═══════════════════════════════════════════════
+   PATCH v3 — Responsive, img placeholder, admin
+   ═══════════════════════════════════════════════ */
+
+/* Image loading placeholder — icon while fetching */
+img[src=""], img:not([src]) {
+  background: var(--gray-5);
+  color: transparent;
+}
+img.lazy-ph {
+  background: var(--gray-5);
+  min-height: 40px;
+  min-width: 40px;
+}
+
+/* Hide duplicate admin link in navbar (shown via .nav-admin-link only once) */
+.navbar .nav-admin-link + .nav-admin-link { display: none; }
+
+/* Admin splash */
+#admin-splash {
+  position: fixed; inset: 0; z-index: 99999;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .5s ease, visibility .5s ease;
+}
+#admin-splash.out { opacity: 0; visibility: hidden; pointer-events: none; }
+.admin-splash-inner { display: flex; flex-direction: column; align-items: center; gap: 1.1rem; }
+.admin-splash-ring {
+  width: 72px; height: 72px; border-radius: 50%;
+  border: 2px solid rgba(200,164,74,.25);
+  border-top-color: var(--gold);
+  animation: ring-spin .9s linear infinite;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+}
+.admin-splash-text { font-family: var(--ff-display); font-size: 1.1rem; color: var(--white); letter-spacing: .1em; }
+.admin-splash-sub  { font-size: .72rem; color: rgba(255,255,255,.4); }
+
+/* ── Admin responsive ── */
+@media (max-width: 1024px) {
+  .settings-grid { grid-template-columns: 1fr; }
+  .admin-content { padding: 1.25rem 1rem; }
+}
+@media (max-width: 768px) {
+  /* Sidebar overlay */
+  .admin-sidebar {
+    transform: translateX(-100%);
+    position: fixed; z-index: 900;
+    box-shadow: 4px 0 24px rgba(0,0,0,.4);
+  }
+  .admin-sidebar.open { transform: translateX(0); }
+  .admin-main { margin-left: 0 !important; }
+  #sb-toggle { display: block !important; }
+
+  /* Topbar */
+  .admin-topbar { padding: .75rem 1rem; }
+  .topbar-user  { display: none; }
+
+  /* Content */
+  .admin-content { padding: 1rem .75rem; overflow-x: hidden; }
+
+  /* Tables — horizontal scroll */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 480px; }
+
+  /* Stats row */
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+  .stat-card .num { font-size: 1.6rem; }
+
+  /* Settings cards */
+  .settings-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .settings-card { padding: 1rem; }
+
+  /* sh header */
+  .sh { flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .sh .btn { width: 100%; justify-content: center; }
+
+  /* Modals */
+  .modal-box { margin: .5rem; max-height: 95vh; overflow-y: auto; }
+  .modal-box-lg { width: calc(100vw - 1rem); }
+
+  /* Media grid */
+  .media-grid { grid-template-columns: repeat(auto-fill, minmax(100px,1fr)); gap: .6rem; }
+
+  /* Sidebar overlay backdrop */
+  .sb-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 899;
+  }
+  .sb-overlay.show { display: block; }
+}
+
+/* ── Public pages responsive ── */
+@media (max-width: 768px) {
+  /* Navbar */
+  .navbar { padding: 0 1rem; height: 60px; }
+  .brand-name { font-size: .9rem; }
+  .brand-tagline { display: none; }
+  .navbar-nav { top: 60px; }
+
+  /* Hero */
+  .home-hero { min-height: auto; }
+  .home-hero-content { padding: 2.5rem 1rem 2rem; }
+  .home-hero h1 { font-size: 1.9rem; }
+  .home-hero p  { font-size: .9rem; }
+  .home-hero-btns { flex-direction: column; gap: .6rem; }
+  .home-hero-btns .btn { text-align: center; justify-content: center; }
+  .home-hero-image { height: 200px; }
+
+  /* Stats bar */
+  .stat-item-bar { padding: .75rem .85rem; }
+  .stat-item-bar .num { font-size: 1.3rem; }
+  .stat-item-bar .lbl { font-size: .62rem; }
+
+  /* Quick links */
+  .quick-links { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+  .ql-card { padding: 1.1rem .9rem; gap: .5rem; }
+  .ql-icon { width: 44px; height: 44px; font-size: 1.2rem; }
+  .ql-title { font-size: .82rem; }
+  .ql-desc  { font-size: .7rem; }
+
+  /* Sambutan */
+  .sambutan-inner { padding: 2rem 1rem; }
+  .sambutan-quote { font-size: .9rem; }
+
+  /* News grid */
+  .news-grid { grid-template-columns: 1fr; }
+  .news-card-img { height: 180px; }
+
+  /* Staff grid */
+  .staff-grid { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+
+  /* Section */
+  .section { padding: 2.5rem 1rem; }
+  .section-title { font-size: 1.5rem; }
+  .container { padding: 0 1rem; }
+
+  /* Page hero */
+  .page-hero { padding: 2.5rem 1rem; }
+  .page-hero h1 { font-size: 1.6rem; }
+
+  /* Layanan */
+  .layanan-card { padding: 1.25rem 1rem; }
+  .layanan-card h2 { font-size: 1.2rem; margin-bottom: 1.25rem; }
+  .tab-btn { padding: .45rem .85rem; font-size: .78rem; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; }
+
+  /* Pagination */
+  .pagination { flex-wrap: wrap; gap: .3rem; }
+  .pg-btn { min-width: 32px; height: 32px; font-size: .78rem; }
+
+  /* Footer */
+  .footer-container { grid-template-columns: 1fr; }
+  .site-footer { padding: 2rem 1rem 1rem; }
+  .footer-col { margin-top: 0; }
+}
+
+@media (max-width: 400px) {
+  .quick-links { grid-template-columns: 1fr 1fr; }
+  .staff-grid  { grid-template-columns: 1fr 1fr; }
+  .stats-row   { grid-template-columns: 1fr 1fr; }
+  .home-hero h1 { font-size: 1.6rem; }
+}
