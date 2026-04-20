@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dashboard Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body style="background:#F0F2F5;visibility:hidden">
+<!-- SPLASH: pakai class CSS yang sama dengan halaman publik -->
+<div id="splash">
+  <div class="splash-inner">
+    <div class="splash-logo-ring">
+      <div class="splash-ring r1"></div>
+      <div class="splash-ring r2"></div>
+      <div class="splash-ring r3"></div>
+      <img id="splash-logo" src="" alt="" class="splash-logo-img"/>
+    </div>
+    <div class="splash-name" id="splash-name"></div>
+    <div class="splash-sub">Admin Dashboard</div>
+    <div class="splash-bar"><div class="splash-bar-fill" id="splash-fill"></div></div>
+  </div>
+</div>
+<div class="admin-layout">
+
+<!-- ════ SIDEBAR ════════════════════════════════════════════ -->
+<aside class="admin-sidebar" id="sidebar">
+  <div class="sb-brand">
+    <img class="sb-logo" id="sb-logo" src="https://placehold.co/36x36/122240/C8A44A?text=L" alt="Logo"/>
+    <div><div class="sb-name" id="sb-name">Lapas</div><div class="sb-sub">Admin Dashboard</div></div>
+  </div>
+  <nav class="sb-nav" id="sb-nav">
+    <div class="sb-section">Utama</div>
+    <div class="sb-item active" data-panel="dashboard"><span class="icon">📊</span>Dashboard</div>
+    <div class="sb-section">Konten</div>
+    <div class="sb-item" data-panel="sambutan"><span class="icon">🎤</span>Sambutan Kepala</div>
+    <div class="sb-item" data-panel="staff"><span class="icon">👥</span>Manajemen Staff</div>
+    <div class="sb-item" data-panel="news"><span class="icon">📰</span>Berita & Kegiatan</div>
+    <div class="sb-item" data-panel="pages"><span class="icon">📄</span>Konten Halaman</div>
+    <div class="sb-section">Sistem</div>
+    <div class="sb-item" data-panel="settings"><span class="icon">⚙️</span>Global Settings</div>
+    <div class="sb-item" data-panel="media"><span class="icon">🖼️</span>Media Library</div>
+    <div class="sb-item" data-panel="profile"><span class="icon">👤</span>Profil & Password</div>
+    <div class="sb-item" onclick="window.open('../index.html','_blank')"><span class="icon">🌐</span>Lihat Website</div>
+  </nav>
+  <div class="sb-footer">
+    <div style="font-size:.75rem;color:rgba(255,255,255,.3);margin-bottom:.6rem;padding:0 .4rem" id="sb-email"></div>
+    <button class="btn-logout" onclick="doLogout()">🚪 Keluar</button>
+  </div>
+</aside>
+
+<!-- ════ MAIN ════════════════════════════════════════════════ -->
+<div class="admin-main">
+  <div class="admin-topbar">
+    <div style="display:flex;align-items:center;gap:1rem">
+      <button id="sb-toggle" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--navy);display:none">☰</button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+    </div>
+    <div class="topbar-user">Halo, <strong id="topbar-email">Admin</strong></div>
+  </div>
+
+  <div class="admin-content">
+
+    <!-- ── DASHBOARD ─────────────────────────────────────── -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="stats-row" id="stats-row"></div>
+      <div class="alert alert-success" style="margin-bottom:1.5rem">
+        <strong>Selamat datang di Dashboard Admin!</strong> Semua konten website dikelola dari sini.
+      </div>
+      <div style="background:white;border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow)">
+        <h3 style="font-family:var(--ff-display);margin-bottom:1rem;font-size:1.1rem">Panduan Cepat</h3>
+        <ul style="list-style:disc;padding-left:1.25rem;font-size:.875rem;color:var(--gray-2);line-height:2">
+          <li><strong>Sambutan Kepala</strong> — Atur teks sambutan dan foto kepala lapas yang muncul di beranda</li>
+          <li><strong>Manajemen Staff</strong> — Tambah/edit/hapus data pegawai beserta foto</li>
+          <li><strong>Berita & Kegiatan</strong> — Tulis dan kelola artikel berita</li>
+          <li><strong>Konten Halaman</strong> — Edit Visi-Misi, Alur Kunjungan, Syarat, Kontak menggunakan editor visual</li>
+          <li><strong>Global Settings</strong> — Atur nama lapas, logo, alamat, link kunjungan, dan media sosial</li>
+          <li><strong>Media Library</strong> — Salin URL gambar yang sudah diupload ke R2</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ── SAMBUTAN ───────────────────────────────────────── -->
+    <div class="panel" id="panel-sambutan">
+      <div class="sh"><h2>🎤 Sambutan Kepala Lapas</h2><button class="btn btn-gold" onclick="saveSambutan()">💾 Simpan</button></div>
+      <div id="alert-sambutan"></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>👤 Identitas</h3>
+          <div class="form-group"><label class="form-label">Nama Kepala Lapas</label><input id="smb-name" class="form-control" placeholder="Nama lengkap"/></div>
+          <div class="form-group"><label class="form-label">Jabatan</label><input id="smb-position" class="form-control" placeholder="Kepala Lapas Kelas III Saparua" value="Kepala Lembaga Pemasyarakatan"/></div>
+          <div class="form-group"><label class="form-label">Judul Sambutan</label><input id="smb-title" class="form-control" placeholder="Sambutan Kepala Lapas"/></div>
+          <div class="form-group">
+            <label class="form-label">URL Foto (dari R2)</label>
+            <input id="smb-photo" class="form-control" placeholder="https://pub-xxx.r2.dev/foto-kalapas.jpg"/>
+            <div class="form-hint">Upload foto via Media Library, lalu salin URL-nya ke sini.</div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <h3>📝 Isi Sambutan</h3>
+          <div class="form-group">
+            <label class="form-label">Teks Sambutan</label>
+            <div id="smb-content-rte"></div>
+            <div class="form-hint">Tulis teks sambutan yang akan tampil di beranda website.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STAFF ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-staff">
+      <div class="sh"><h2>👥 Manajemen Staff</h2><button class="btn btn-primary" onclick="openStaffModal()">+ Tambah Staff</button></div>
+      <div id="alert-staff"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Prioritas</th><th>Aksi</th></tr></thead>
+          <tbody id="staff-tbody"><tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="staff-pag"></div>
+    </div>
+
+    <!-- ── NEWS ──────────────────────────────────────────── -->
+    <div class="panel" id="panel-news">
+      <div class="sh"><h2>📰 Berita & Kegiatan</h2><button class="btn btn-primary" onclick="openNewsModal()">+ Tambah Berita</button></div>
+      <div id="alert-news"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Thumbnail</th><th>Judul</th><th>Penulis</th><th>Tanggal</th><th>Aksi</th></tr></thead>
+          <tbody id="news-tbody"><tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="news-pag"></div>
+    </div>
+
+    <!-- ── PAGES ─────────────────────────────────────────── -->
+    <div class="panel" id="panel-pages">
+      <div class="sh"><h2>📄 Konten Halaman Statis</h2></div>
+      <div id="alert-pages"></div>
+      <div style="display:flex;flex-direction:column;gap:1rem" id="pages-list">
+        <div class="loading-center"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS ───────────────────────────────────────── -->
+    <div class="panel" id="panel-settings">
+      <div class="sh"><h2>⚙️ Global Settings</h2><button class="btn btn-gold" onclick="saveSettings()">💾 Simpan Semua</button></div>
+      <div id="alert-settings"></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>🏛️ Identitas Website</h3>
+          <div class="form-group"><label class="form-label">Nama Lapas / Aplikasi</label><input id="cfg-app_name" class="form-control" placeholder="Lapas Kelas III Saparua"/></div>
+          <div class="form-group"><label class="form-label">Tagline</label><input id="cfg-app_tagline" class="form-control" placeholder="Kementerian Hukum dan HAM RI"/></div>
+          <div class="form-group"><label class="form-label">URL Logo</label><input id="cfg-logo_url" class="form-control" placeholder="https://pub-xxx.r2.dev/logo.png"/></div>
+          <div class="form-group"><label class="form-label">URL Foto Hero (halaman beranda, sisi kanan)</label><input id="cfg-hero_image_url" class="form-control" placeholder="https://pub-xxx.r2.dev/gedung.jpg"/></div>
+          <div class="form-group"><label class="form-label">Deskripsi Hero</label><textarea id="cfg-hero_description" class="form-control" rows="3" placeholder="Melayani dengan profesional..."></textarea></div>
+        </div>
+        <div class="settings-card">
+          <h3>📍 Kontak & Alamat</h3>
+          <div class="form-group"><label class="form-label">Alamat Kantor</label><textarea id="cfg-office_address" class="form-control" rows="3" placeholder="Jl. Pemasyarakatan No. 1..."></textarea></div>
+          <div class="form-group"><label class="form-label">Nomor Telepon</label><input id="cfg-office_phone" class="form-control" placeholder="(0911) xxx-xxxx"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input id="cfg-office_email" class="form-control" placeholder="info@lapas.go.id"/></div>
+        </div>
+        <div class="settings-card">
+          <h3>🔗 Integrasi Kunjungan</h3>
+          <div class="form-group"><label class="form-label">Link Web Kunjungan Eksternal</label><input id="cfg-external_visit_link" class="form-control" placeholder="https://kunjungan.lapas.go.id"/><div class="form-hint">Akan muncul di tombol "Daftar Kunjungan" di seluruh website.</div></div>
+        </div>
+        <div class="settings-card">
+          <h3>📱 Media Sosial</h3>
+          <div class="form-group"><label class="form-label">Instagram URL</label><input id="cfg-socmed_instagram" class="form-control" placeholder="https://instagram.com/..."/></div>
+          <div class="form-group"><label class="form-label">Facebook URL</label><input id="cfg-socmed_facebook" class="form-control" placeholder="https://facebook.com/..."/></div>
+          <div class="form-group"><label class="form-label">YouTube URL</label><input id="cfg-socmed_youtube" class="form-control" placeholder="https://youtube.com/..."/></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MEDIA ──────────────────────────────────────────── -->
+    <div class="panel" id="panel-media">
+      <div class="sh">
+        <h2>🖼️ Media Library</h2>
+        <div style="display:flex;gap:.75rem;align-items:center">
+          <input type="file" id="media-file-input" accept="image/*,image/png,image/jpeg,image/jpg,image/webp" style="display:none" multiple/>
+          <button class="btn btn-primary" id="btn-upload-media">📤 Upload Foto</button>
+        </div>
+      </div>
+      <div id="upload-progress-wrap" style="display:none;margin-bottom:1rem">
+        <div style="background:var(--gray-5);border-radius:99px;height:8px;overflow:hidden">
+          <div id="upload-progress-bar" style="height:100%;background:var(--gold);width:0%;transition:width .3s"></div>
+        </div>
+        <div id="upload-progress-text" style="font-size:.8rem;color:var(--gray-2);margin-top:.4rem">Mengupload...</div>
+      </div>
+      <div id="alert-media"></div>
+      <div class="media-grid" id="media-grid"><div class="loading-center"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- Media Preview Modal -->
+    <div class="modal-overlay" id="modal-media-preview">
+      <div class="modal-box" style="max-width:540px">
+        <div class="modal-header">
+          <h3>🖼️ Detail Foto</h3>
+          <button class="modal-close" onclick="closeModal('modal-media-preview')">✕</button>
+        </div>
+        <div class="modal-body" style="text-align:center">
+          <img id="preview-img" src="" alt="" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;margin-bottom:1rem"/>
+          <div id="preview-filename" style="font-size:.8rem;color:var(--gray-2);margin-bottom:.75rem;word-break:break-all"></div>
+          <div style="display:flex;gap:.75rem;background:var(--gray-5);border-radius:8px;padding:.75rem;align-items:center">
+            <input id="preview-url" class="form-control" style="font-size:.78rem;flex:1" readonly/>
+            <button class="btn btn-gold btn-sm" onclick="copyPreviewUrl()" style="white-space:nowrap">📋 Salin URL</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteMediaFromPreview()">🗑️ Hapus Foto</button>
+          <button class="btn btn-primary" onclick="copyPreviewUrl()">📋 Salin & Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PROFILE ────────────────────────────────────────── -->
+    <div class="panel" id="panel-profile">
+      <div class="sh"><h2>👤 Profil & Keamanan</h2></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>📧 Ubah Email</h3>
+          <div id="alert-email"></div>
+          <div class="form-group"><label class="form-label">Email Baru</label><input type="email" id="prof-email" class="form-control" placeholder="email@baru.com"/></div>
+          <button class="btn btn-primary" onclick="saveEmail()">Simpan Email</button>
+        </div>
+        <div class="settings-card">
+          <h3>🔑 Ubah Password</h3>
+          <div id="alert-password"></div>
+          <div class="form-group"><label class="form-label">Password Baru</label><input type="password" id="prof-pass1" class="form-control" placeholder="Minimal 6 karakter"/></div>
+          <div class="form-group"><label class="form-label">Konfirmasi Password</label><input type="password" id="prof-pass2" class="form-control" placeholder="Ulangi password baru"/></div>
+          <button class="btn btn-primary" onclick="savePassword()">Simpan Password</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /admin-content -->
+</div><!-- /admin-main -->
+</div><!-- /admin-layout -->
+
+<!-- ════ MODALS ══════════════════════════════════════════════ -->
+
+<!-- Staff Modal -->
+<div class="modal-overlay" id="modal-staff">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="staff-modal-title">Tambah Staff</h3><button class="modal-close" onclick="closeModal('modal-staff')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="staff-id"/>
+      <div class="form-group"><label class="form-label">Nama Lengkap <span class="req">*</span></label><input id="staff-name" class="form-control" placeholder="Nama lengkap pegawai"/></div>
+      <div class="form-group"><label class="form-label">Jabatan <span class="req">*</span></label><input id="staff-position" class="form-control" placeholder="Kepala Lapas, Kasubag Umum..."/></div>
+      <div class="form-group"><label class="form-label">Prioritas Tampil <span style="font-weight:400;color:var(--gray-2)">(angka kecil = paling atas)</span></label><input id="staff-order" class="form-control" type="number" value="99" min="1"/></div>
+      <div class="form-group">
+        <label class="form-label">URL Foto</label>
+        <input id="staff-img-url" class="form-control" placeholder="https://pub-xxx.r2.dev/foto.jpg"/>
+        <div class="form-hint">Salin URL dari Media Library. Kosongkan jika belum ada foto.</div>
+        <img id="staff-img-preview" src="" alt="" style="margin-top:.75rem;max-width:100px;border-radius:8px;display:none"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-staff')">Batal</button>
+      <button class="btn btn-primary" onclick="saveStaff()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- News Modal -->
+<div class="modal-overlay" id="modal-news">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-header"><h3 id="news-modal-title">Tambah Berita</h3><button class="modal-close" onclick="closeModal('modal-news')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="news-id"/>
+      <div class="form-group"><label class="form-label">Judul Berita <span class="req">*</span></label><input id="news-title" class="form-control" placeholder="Judul berita..."/></div>
+      <div class="form-group"><label class="form-label">Penulis</label><input id="news-author" class="form-control" placeholder="Nama penulis atau unit"/></div>
+      <div class="form-group">
+        <label class="form-label">Isi Berita</label>
+        <div id="news-content-rte"></div>
+      </div>
+      <div class="form-group"><label class="form-label">URL Thumbnail</label><input id="news-thumbnail" class="form-control" placeholder="https://pub-xxx.r2.dev/foto.jpg"/><div class="form-hint">Salin URL dari Media Library.</div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-news')">Batal</button>
+      <button class="btn btn-primary" onclick="saveNews()">💾 Simpan Berita</button>
+    </div>
+  </div>
+</div>
+
+<!-- Page Content Modal -->
+<div class="modal-overlay" id="modal-page">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-header"><h3 id="page-modal-title">Edit Konten</h3><button class="modal-close" onclick="closeModal('modal-page')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="page-key"/>
+      <div class="alert alert-info" style="margin-bottom:1rem" id="page-editor-hint"></div>
+      <label class="form-label">Isi Konten</label>
+      <div id="page-content-rte"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-page')">Batal</button>
+      <button class="btn btn-primary" onclick="savePage()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="global-toast" class="toast"></div>
+
+<script src="../assets/js/config.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────
+// SPLASH
+// ─────────────────────────────────────────────────────────
+let _sTick = null;
+function splashGo() {
+  let p = 0;
+  _sTick = setInterval(function() {
+    p = Math.min(p + Math.random() * 14, 85);
+    var el = document.getElementById('splash-fill');
+    if (el) el.style.width = p + '%';
+  }, 120);
+}
+function splashStop() {
+  clearInterval(_sTick);
+  var el = document.getElementById('splash-fill');
+  if (el) el.style.width = '100%';
+  setTimeout(function() {
+    var s = document.getElementById('splash');
+    if (s) { s.classList.add('out'); setTimeout(function() { s.remove(); }, 600); }
+  }, 350);
+}
+
+// ─────────────────────────────────────────────────────────
+// IDLE LOGOUT — 30 menit tidak ada aktivitas
+// ─────────────────────────────────────────────────────────
+var IDLE_MS = 30 * 60 * 1000;
+var _idleT = null;
+function resetIdle() {
+  clearTimeout(_idleT);
+  _idleT = setTimeout(async function() {
+    await sb.auth.signOut();
+    window.location.replace('login.html');
+  }, IDLE_MS);
+}
+function startIdle() {
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(function(ev) {
+    document.addEventListener(ev, resetIdle, { passive: true });
+  });
+  resetIdle();
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTH GUARD — body hidden sampai session valid
+// ─────────────────────────────────────────────────────────
+var PANELS = ['dashboard','sambutan','staff','news','pages','settings','media','profile'];
+var currentUser = null;
+
+splashGo(); // mulai splash sebelum apapun
+
+(async function() {
+  var res = await sb.auth.getSession();
+  var session = res.data.session;
+
+  // Tidak ada session → redirect, body tetap hidden selamanya
+  if (!session) {
+    window.location.replace('login.html');
+    return;
+  }
+
+  // Ada session → tampilkan body
+  document.body.style.visibility = 'visible';
+  currentUser = session.user;
+  document.getElementById('topbar-email').textContent = currentUser.email;
+  document.getElementById('sb-email').textContent     = currentUser.email;
+  document.getElementById('prof-email').value         = currentUser.email;
+
+  // Baca hash untuk restore panel (agar refresh tetap di panel yang sama)
+  var hash = window.location.hash.replace('#','').trim();
+  var active = PANELS.indexOf(hash) >= 0 ? hash : 'dashboard';
+
+  document.querySelectorAll('.sb-item').forEach(function(i) { i.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  var nav   = document.querySelector('.sb-item[data-panel="' + active + '"]');
+  var panel = document.getElementById('panel-' + active);
+  if (nav)   nav.classList.add('active');
+  if (panel) panel.classList.add('active');
+  var topEl = document.getElementById('topbar-title');
+  if (topEl && nav) topEl.textContent = nav.textContent.trim();
+
+  // Load branding dulu (isi splash name sebelum hilang)
+  await loadSidebarBranding();
+
+  // Load data panel aktif
+  loadStats();
+  if (panelLoaders[active]) panelLoaders[active]();
+
+  splashStop();
+
+  // Pantau logout dari tab lain
+  sb.auth.onAuthStateChange(function(event) {
+    if (event === 'SIGNED_OUT') window.location.replace('login.html');
+  });
+
+  // Aktifkan idle watcher
+  startIdle();
+})();
+
+// ─────────────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────────────
+function toast(msg, type) {
+  type = type || 'success';
+  var el = document.getElementById('global-toast');
+  el.textContent = msg;
+  el.className = 'toast toast-' + type + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.classList.remove('show'); }, 3500);
+}
+
+// ─────────────────────────────────────────────────────────
+// NAVIGASI — hash URL agar refresh tetap di panel yang sama
+// ─────────────────────────────────────────────────────────
+var panelLoaders = {
+  dashboard: function() { loadStats(); },
+  staff:     function() { loadStaff(); },
+  news:      function() { loadNews(); },
+  pages:     function() { loadPages(); },
+  settings:  function() { loadSettings(); },
+  media:     function() { loadMedia(); },
+  sambutan:  function() { loadSambutan(); },
+  profile:   function() {}
+};
+
+document.getElementById('sb-nav').addEventListener('click', function(e) {
+  var item = e.target.closest('.sb-item[data-panel]');
+  if (!item) return;
+  var p = item.dataset.panel;
+  document.querySelectorAll('.sb-item').forEach(function(i) { i.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(x) { x.classList.remove('active'); });
+  item.classList.add('active');
+  document.getElementById('panel-' + p).classList.add('active');
+  document.getElementById('topbar-title').textContent = item.textContent.trim();
+  if (panelLoaders[p]) panelLoaders[p]();
+  // Tulis hash — refresh akan baca ini
+  history.replaceState(null, '', location.pathname + '#' + p);
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+});
+
+var sbToggle = document.getElementById('sb-toggle');
+if (window.innerWidth < 768) sbToggle.style.display = 'block';
+sbToggle.addEventListener('click', function() {
+  document.getElementById('sidebar').classList.toggle('open');
+});
+
+document.querySelectorAll('.modal-overlay').forEach(function(o) {
+  o.addEventListener('click', function(e) {
+    if (e.target === o) o.classList.remove('open');
+  });
+});
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+
+async function doLogout() {
+  clearTimeout(_idleT);
+  await sb.auth.signOut();
+  window.location.replace('login.html');
+}
+
+// ─────────────────────────────────────────────────────────
+// RICH TEXT EDITOR
+// ─────────────────────────────────────────────────────────
+function createRTE(containerId, initialHTML) {
+  initialHTML = initialHTML || '';
+  var container = document.getElementById(containerId);
+  var toolbar = [
+    ['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],
+    ['|'],
+    ['insertOrderedList','1.'],['insertUnorderedList','•'],
+    ['|'],
+    ['formatBlock:H3','H3'],['formatBlock:P','¶'],
+    ['|'],
+    ['createLink','🔗']
+  ];
+  var tbHtml = toolbar.map(function(t) {
+    var cmd = t[0], label = t[1];
+    if (cmd === '|') return '<span style="width:1px;background:var(--gray-4);align-self:stretch;margin:0 .2rem;display:inline-block"></span>';
+    return '<button type="button" class="rte-btn" data-cmd="' + cmd + '">' + label + '</button>';
+  }).join('');
+  container.innerHTML = '<div class="rte-toolbar">' + tbHtml + '</div><div class="rte-editor" contenteditable="true">' + initialHTML + '</div>';
+  var editor = container.querySelector('.rte-editor');
+  container.querySelector('.rte-toolbar').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-cmd]');
+    if (!btn) return;
+    var cmd = btn.dataset.cmd;
+    if (cmd.startsWith('formatBlock:')) {
+      document.execCommand('formatBlock', false, cmd.split(':')[1]);
+    } else if (cmd === 'createLink') {
+      var url = prompt('Masukkan URL:', 'https://');
+      if (url) document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    editor.focus();
+  });
+  return {
+    getHTML: function() { return editor.innerHTML; },
+    setHTML: function(h) { editor.innerHTML = h; }
+  };
+}
+
+// ─────────────────────────────────────────────────────────
+// SIDEBAR BRANDING — isi juga splash
+// ─────────────────────────────────────────────────────────
+async function loadSidebarBranding() {
+  var res = await sb.from('web_settings').select('key_name,value_text').in('key_name',['app_name','logo_url']);
+  var s = {};
+  (res.data || []).forEach(function(r) { s[r.key_name] = r.value_text; });
+  if (s.app_name) {
+    document.getElementById('sb-name').textContent = s.app_name;
+    document.title = 'Dashboard — ' + s.app_name;
+    var sn = document.getElementById('splash-name');
+    if (sn) sn.textContent = s.app_name;
+  }
+  if (s.logo_url) {
+    var sbLogo = document.getElementById('sb-logo');
+    if (sbLogo) sbLogo.src = s.logo_url;
+    var spLogo = document.getElementById('splash-logo');
+    if (spLogo) spLogo.src = s.logo_url;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────────────────────
+async function loadStats() {
+  var results = await Promise.all([
+    sb.from('news_posts').select('*',{count:'exact',head:true}),
+    sb.from('staff_hierarchy').select('*',{count:'exact',head:true}),
+    sb.from('page_contents').select('*',{count:'exact',head:true})
+  ]);
+  var cn = results[0].count || 0;
+  var cs = results[1].count || 0;
+  var cp = results[2].count || 0;
+  document.getElementById('stats-row').innerHTML = [
+    [cn,'Berita'],[cs,'Pegawai'],[cp,'Konten Halaman'],['✅','Sistem Aktif']
+  ].map(function(x) {
+    return '<div class="stat-card"><div class="num">' + x[0] + '</div><div class="lbl">' + x[1] + '</div></div>';
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+// SETTINGS
+// ─────────────────────────────────────────────────────────
+var CFG_KEYS = ['app_name','app_tagline','logo_url','hero_image_url','hero_description','office_address','office_phone','office_email','external_visit_link','socmed_instagram','socmed_facebook','socmed_youtube'];
+
+async function loadSettings() {
+  var res = await sb.from('web_settings').select('key_name,value_text');
+  var s = {};
+  (res.data || []).forEach(function(r) { s[r.key_name] = r.value_text; });
+  CFG_KEYS.forEach(function(k) {
+    var el = document.getElementById('cfg-' + k);
+    if (el && s[k]) el.value = s[k];
+  });
+}
+
+async function saveSettings() {
+  var btn = document.querySelector('#panel-settings .btn-gold');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner-sm"></div> Menyimpan...';
+  var upserts = CFG_KEYS.map(function(k) {
+    var el = document.getElementById('cfg-' + k);
+    return { key_name: k, value_text: el ? el.value.trim() : '' };
+  });
+  var res = await sb.from('web_settings').upsert(upserts, {onConflict:'key_name'});
+  btn.disabled = false; btn.innerHTML = '💾 Simpan Semua';
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
+  else { toast('Settings disimpan!'); loadSidebarBranding(); }
+}
+
+// ─────────────────────────────────────────────────────────
+// SAMBUTAN
+// ─────────────────────────────────────────────────────────
+var smbRTE = null;
+async function loadSambutan() {
+  if (!smbRTE) smbRTE = createRTE('smb-content-rte', '');
+  var res = await sb.from('sambutan').select('*').limit(1).single();
+  var data = res.data;
+  if (data) {
+    document.getElementById('smb-name').value     = data.name || '';
+    document.getElementById('smb-position').value = data.position || '';
+    document.getElementById('smb-title').value    = data.title || '';
+    document.getElementById('smb-photo').value    = data.photo_url || '';
+    smbRTE.setHTML(data.content || '');
+  }
+}
+
+async function saveSambutan() {
+  var btn = document.querySelector('#panel-sambutan .btn-gold');
+  btn.disabled = true; btn.innerHTML = 'Menyimpan...';
+  var payload = {
+    name:      document.getElementById('smb-name').value.trim(),
+    position:  document.getElementById('smb-position').value.trim(),
+    title:     document.getElementById('smb-title').value.trim(),
+    photo_url: document.getElementById('smb-photo').value.trim() || null,
+    content:   smbRTE.getHTML()
+  };
+  var ex = await sb.from('sambutan').select('id').limit(1).single();
+  var res;
+  if (ex.data) res = await sb.from('sambutan').update(payload).eq('id', ex.data.id);
+  else         res = await sb.from('sambutan').insert(payload);
+  btn.disabled = false; btn.innerHTML = '💾 Simpan';
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
+  else toast('Sambutan disimpan!');
+}
+
+// ─────────────────────────────────────────────────────────
+// STAFF
+// ─────────────────────────────────────────────────────────
+var staffAll = [], staffPage = 1;
+var STAFF_PER = 10;
+
+async function loadStaff() {
+  document.getElementById('staff-tbody').innerHTML = '<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
+  var res = await sb.from('staff_hierarchy').select('*').order('order_priority');
+  staffAll = res.data || [];
+  renderStaffTable();
+}
+
+function renderStaffTable() {
+  var tbody = document.getElementById('staff-tbody');
+  var pag   = document.getElementById('staff-pag');
+  var pages = Math.ceil(staffAll.length / STAFF_PER);
+  var slice = staffAll.slice((staffPage-1)*STAFF_PER, staffPage*STAFF_PER);
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👥</div><p>Belum ada staff.</p></div></td></tr>';
+    pag.innerHTML = ''; return;
+  }
+  // Simpan data staff di Map agar tombol edit bisa akses via id
+  if (!window._staffMap) window._staffMap = {};
+  slice.forEach(function(s) { window._staffMap[s.id] = s; });
+
+  tbody.innerHTML = slice.map(function(s) {
+    var init = s.name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+    var img  = s.image_url
+      ? '<img class="td-thumb" src="' + s.image_url + '" loading="lazy">'
+      : '<div class="td-thumb-ph">' + init + '</div>';
+    return '<tr><td>' + img + '</td><td><strong>' + s.name + '</strong></td><td>' + s.position + '</td>'
+      + '<td><span class="badge badge-navy">' + s.order_priority + '</span></td>'
+      + '<td><div class="td-actions">'
+      + '<button class="btn btn-outline btn-sm" data-action="edit-staff" data-id="' + s.id + '">✏️ Edit</button>'
+      + '<button class="btn btn-danger btn-sm" data-action="del-staff" data-id="' + s.id + '">🗑️</button>'
+      + '</div></td></tr>';
+  }).join('');
+  buildPag(pag, pages, staffPage, function(p) { staffPage = p; renderStaffTable(); });
+  buildPag(pag, pages, staffPage, function(p) { staffPage = p; renderStaffTable(); });
+}
+
+function openStaffModal(s) {
+  s = s || null;
+  document.getElementById('staff-modal-title').textContent = s ? 'Edit Staff' : 'Tambah Staff';
+  document.getElementById('staff-id').value       = s ? s.id : '';
+  document.getElementById('staff-name').value     = s ? s.name : '';
+  document.getElementById('staff-position').value = s ? s.position : '';
+  document.getElementById('staff-order').value    = s ? s.order_priority : 99;
+  document.getElementById('staff-img-url').value  = s ? (s.image_url || '') : '';
+  var prev = document.getElementById('staff-img-preview');
+  if (s && s.image_url) { prev.src = s.image_url; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
+  openModal('modal-staff');
+}
+
+document.getElementById('staff-img-url').addEventListener('input', function(e) {
+  var prev = document.getElementById('staff-img-preview');
+  if (e.target.value) { prev.src = e.target.value; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
+});
+
+function editStaff(s) { openStaffModal(s); }
+
+async function saveStaff() {
+  var id  = document.getElementById('staff-id').value;
+  var name= document.getElementById('staff-name').value.trim();
+  var pos = document.getElementById('staff-position').value.trim();
+  if (!name || !pos) { toast('Nama dan jabatan wajib diisi!','error'); return; }
+  var payload = {
+    name: name, position: pos,
+    order_priority: parseInt(document.getElementById('staff-order').value) || 99,
+    image_url: document.getElementById('staff-img-url').value.trim() || null
+  };
+  var res;
+  if (id) res = await sb.from('staff_hierarchy').update(payload).eq('id', id);
+  else    res = await sb.from('staff_hierarchy').insert(payload);
+  if (res.error) toast('Error: ' + res.error.message, 'error');
+  else { toast(id ? 'Staff diperbarui!' : 'Staff ditambahkan!'); closeModal('modal-staff'); loadStaff(); loadStats(); }
+}
+
+async function deleteStaff(id) {
+  if (!confirm('Hapus data staff ini?')) return;
+  var res = await sb.from('staff_hierarchy').delete().eq('id', id);
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
+  else { toast('Staff dihapus.'); loadStaff(); loadStats(); }
+}
+
+// ─────────────────────────────────────────────────────────
+// NEWS
+// ─────────────────────────────────────────────────────────
+var newsAll = [], newsPage = 1;
+var NEWS_PER = 10;
+var newsRTE = null;
+
+async function loadNews() {
+  document.getElementById('news-tbody').innerHTML = '<tr><td colspan="5"><div class="loading-center"><div class="spinner"></div></div></td></tr>';
+  var res = await sb.from('news_posts').select('*').order('created_at',{ascending:false});
+  newsAll = res.data || [];
+  renderNewsTable();
+}
+
+function renderNewsTable() {
+  var tbody = document.getElementById('news-tbody');
+  var pag   = document.getElementById('news-pag');
+  var pages = Math.ceil(newsAll.length / NEWS_PER);
+  var slice = newsAll.slice((newsPage-1)*NEWS_PER, newsPage*NEWS_PER);
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📰</div><p>Belum ada berita.</p></div></td></tr>';
+    pag.innerHTML = ''; return;
+  }
+  if (!window._newsMap) window._newsMap = {};
+  slice.forEach(function(n) { window._newsMap[n.id] = n; });
+
+  tbody.innerHTML = slice.map(function(n) {
+    var date  = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+    var img   = n.thumbnail_url ? '<img class="td-thumb" src="' + n.thumbnail_url + '" loading="lazy">' : '<div class="td-thumb-ph" style="font-size:.7rem">IMG</div>';
+    var title = n.title.length > 55 ? n.title.substring(0,55) + '…' : n.title;
+    return '<tr><td>' + img + '</td><td><strong>' + title + '</strong></td><td>' + (n.author||'—') + '</td><td>' + date + '</td>'
+      + '<td><div class="td-actions">'
+      + '<button class="btn btn-outline btn-sm" data-action="edit-news" data-id="' + n.id + '">✏️</button>'
+      + '<button class="btn btn-danger btn-sm" data-action="del-news" data-id="' + n.id + '">🗑️</button>'
+      + '</div></td></tr>';
+  }).join('');
+  buildPag(pag, pages, newsPage, function(p) { newsPage = p; renderNewsTable(); });
+}
+
+function openNewsModal(n) {
+  n = n || null;
+  document.getElementById('news-modal-title').textContent = n ? 'Edit Berita' : 'Tambah Berita';
+  document.getElementById('news-id').value        = n ? n.id : '';
+  document.getElementById('news-title').value     = n ? n.title : '';
+  document.getElementById('news-author').value    = n ? (n.author || '') : '';
+  document.getElementById('news-thumbnail').value = n ? (n.thumbnail_url || '') : '';
+  if (!newsRTE) newsRTE = createRTE('news-content-rte', n ? (n.content||'') : '');
+  else          newsRTE.setHTML(n ? (n.content||'') : '');
+  openModal('modal-news');
+}
+
+function editNews(n) { openNewsModal(n); }
+
+async function saveNews() {
+  var id    = document.getElementById('news-id').value;
+  var title = document.getElementById('news-title').value.trim();
+  if (!title) { toast('Judul wajib diisi!','error'); return; }
+  var payload = {
+    title: title,
+    author:        document.getElementById('news-author').value.trim() || null,
+    content:       newsRTE ? newsRTE.getHTML() : null,
+    thumbnail_url: document.getElementById('news-thumbnail').value.trim() || null
+  };
+  var res;
+  if (id) res = await sb.from('news_posts').update(payload).eq('id', id);
+  else    res = await sb.from('news_posts').insert(payload);
+  if (res.error) toast('Error: ' + res.error.message, 'error');
+  else { toast(id ? 'Berita diperbarui!' : 'Berita ditambahkan!'); closeModal('modal-news'); loadNews(); loadStats(); }
+}
+
+async function deleteNews(id) {
+  if (!confirm('Hapus berita ini?')) return;
+  var res = await sb.from('news_posts').delete().eq('id', id);
+  if (res.error) toast('Gagal: ' + res.error.message, 'error');
+  else { toast('Berita dihapus.'); loadNews(); loadStats(); }
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE CONTENTS — tombol Edit pakai index, bukan JSON.stringify
+// ─────────────────────────────────────────────────────────
+var PAGE_DEFS = [
+  { key:'visi-misi',        label:'🏛️ Visi & Misi',           hint:'Tampil di halaman Profil.' },
+  { key:'alur-kunjungan',   label:'📋 Alur Kunjungan',         hint:'Tampil di Layanan > Alur Kunjungan.' },
+  { key:'alur-penitipan',   label:'📦 Alur Penitipan Barang',  hint:'Tampil di Layanan > Penitipan Barang.' },
+  { key:'syarat-ketentuan', label:'📄 Syarat & Ketentuan',     hint:'Tampil di Layanan > Syarat & Ketentuan.' },
+  { key:'kontak',           label:'📞 Kontak & Jam Pelayanan', hint:'Kosongkan untuk gunakan data dari Settings.' }
+];
+var pageRTE = null;
+var _pageData = {};
+
+async function loadPages() {
+  var res = await sb.from('page_contents').select('page_name,body_text');
+  var pc = {};
+  (res.data || []).forEach(function(p) { pc[p.page_name] = p.body_text; });
+  _pageData = pc;
+  var html = '';
+  for (var i = 0; i < PAGE_DEFS.length; i++) {
+    var def = PAGE_DEFS[i];
+    var preview = (pc[def.key] || '').replace(/<[^>]*>/g,'').substring(0,120) || 'Belum ada konten';
+    html += '<div class="settings-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">'
+          + '<div style="flex:1">'
+          + '<div style="font-weight:700;color:var(--navy);margin-bottom:.25rem">' + def.label + '</div>'
+          + '<div style="font-size:.75rem;color:var(--gold);margin-bottom:.3rem">' + def.hint + '</div>'
+          + '<div style="font-size:.8rem;color:var(--gray-2);font-style:italic">' + preview + '…</div>'
+          + '</div>'
+          + '<button class="btn btn-outline btn-sm" onclick="openPageByIdx(' + i + ')">✏️ Edit</button>'
+          + '</div>';
+  }
+  document.getElementById('pages-list').innerHTML = html;
+}
+
+function openPageByIdx(i) {
+  var def     = PAGE_DEFS[i];
+  var content = _pageData[def.key] || '';
+  document.getElementById('page-modal-title').textContent = 'Edit: ' + def.label;
+  document.getElementById('page-key').value               = def.key;
+  document.getElementById('page-editor-hint').textContent = def.hint;
+  if (!pageRTE) pageRTE = createRTE('page-content-rte', content);
+  else          pageRTE.setHTML(content);
+  openModal('modal-page');
+}
+
+async function savePage() {
+  var key  = document.getElementById('page-key').value;
+  var body = pageRTE.getHTML();
+  var res  = await sb.from('page_contents').upsert({ page_name:key, body_text:body, last_updated:new Date().toISOString() }, {onConflict:'page_name'});
+  if (res.error) toast('Error: ' + res.error.message, 'error');
+  else { toast('Konten disimpan!'); closeModal('modal-page'); loadPages(); loadStats(); }
+}
+
+// ─────────────────────────────────────────────────────────
+// MEDIA
+// ─────────────────────────────────────────────────────────
+var allMediaFiles = [];
+var currentPreviewKey = '';
+
+async function loadMedia() {
+  var grid = document.getElementById('media-grid');
+  grid.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+  try {
+    var sr = await sb.auth.getSession();
+    var token = sr.data.session.access_token;
+    var resp = await fetch('/api/media-list', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!resp.ok) throw new Error('Gagal memuat daftar foto');
+    var json = await resp.json();
+    allMediaFiles = json.files || [];
+    if (!allMediaFiles.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><h3>Belum ada foto</h3><p style="color:var(--gray-2);font-size:.85rem">Klik "Upload Foto" untuk menambahkan gambar</p></div>';
+      return;
+    }
+    grid.innerHTML = allMediaFiles.map(function(f) {
+      return '<div class="media-item" onclick="openMediaPreview('' + f.key.replace(/'/g,"\'") + '','' + f.url.replace(/'/g,"\'") + '')" title="' + f.name + '">'
+        + '<img src="' + f.url + '" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:140px;object-fit:cover"/>'
+        + '<div style="display:none;height:140px;align-items:center;justify-content:center;font-size:2rem;background:var(--gray-5)">🖼️</div>'
+        + '<div class="media-item-info"><div class="media-item-name" style="font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + f.name + '</div>'
+        + '<div class="media-copy-hint" style="font-size:.7rem;color:var(--gold)">Klik untuk lihat & salin URL</div></div></div>';
+    }).join('');
+  } catch(err) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Gagal memuat</h3><p>' + err.message + '</p></div>';
+  }
+}
+
+function openMediaPreview(key, url) {
+  currentPreviewKey = key;
+  document.getElementById('preview-img').src    = url;
+  document.getElementById('preview-url').value  = url;
+  document.getElementById('preview-filename').textContent = key.split('/').pop();
+  openModal('modal-media-preview');
+}
+function copyPreviewUrl() {
+  var url = document.getElementById('preview-url').value;
+  navigator.clipboard.writeText(url)
+    .then(function() { toast('✅ URL disalin!'); closeModal('modal-media-preview'); })
+    .catch(function() { toast('Gagal menyalin.','error'); });
+}
+async function deleteMediaFromPreview() {
+  if (!confirm('Hapus foto ini? Foto yang sudah dipakai di konten akan rusak.')) return;
+  try {
+    var sr = await sb.auth.getSession();
+    var token = sr.data.session.access_token;
+    var resp = await fetch('/api/media-delete?key=' + encodeURIComponent(currentPreviewKey), {
+      method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!resp.ok) throw new Error('Gagal menghapus');
+    toast('Foto dihapus.'); closeModal('modal-media-preview'); loadMedia();
+  } catch(err) { toast('Hapus gagal: ' + err.message, 'error'); }
+}
+
+document.getElementById('btn-upload-media').addEventListener('click', function() {
+  document.getElementById('media-file-input').click();
+});
+document.getElementById('media-file-input').addEventListener('change', async function(e) {
+  var files = Array.from(e.target.files);
+  if (!files.length) return;
+  var invalid = files.filter(function(f) { return !f.type.startsWith('image/'); });
+  if (invalid.length) { toast('Hanya file gambar yang diperbolehkan.','error'); return; }
+  var tooBig  = files.filter(function(f) { return f.size > 5*1024*1024; });
+  if (tooBig.length) { toast('Ukuran file maksimal 5MB per foto.','error'); return; }
+  var wrap = document.getElementById('upload-progress-wrap');
+  var bar  = document.getElementById('upload-progress-bar');
+  var txt  = document.getElementById('upload-progress-text');
+  wrap.style.display = 'block';
+  var sr    = await sb.auth.getSession();
+  var token = sr.data.session.access_token;
+  var done  = 0;
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    txt.textContent = 'Mengupload ' + file.name + '... (' + (done+1) + '/' + files.length + ')';
+    bar.style.width = Math.round((done/files.length)*100) + '%';
+    try {
+      var fd = new FormData(); fd.append('file', file);
+      var resp = await fetch('/api/upload', { method:'POST', headers:{'Authorization':'Bearer '+token}, body:fd });
+      var result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Upload gagal');
+      done++;
+    } catch(err) { toast('Gagal upload ' + file.name + ': ' + err.message, 'error'); }
+  }
+  bar.style.width = '100%';
+  txt.textContent = '✅ ' + done + ' foto berhasil diupload';
+  setTimeout(function() { wrap.style.display='none'; bar.style.width='0%'; }, 2000);
+  e.target.value = ''; loadMedia();
+});
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(function(){toast('URL disalin! ✓');}).catch(function(){toast('Gagal menyalin.','error');});
+}
+
+// ─────────────────────────────────────────────────────────
+// PROFILE
+// ─────────────────────────────────────────────────────────
+async function saveEmail() {
+  var email = document.getElementById('prof-email').value.trim();
+  var al = document.getElementById('alert-email');
+  if (!email) { al.innerHTML='<div class="alert alert-danger">Email tidak boleh kosong.</div>'; return; }
+  var res = await sb.auth.updateUser({ email: email });
+  al.innerHTML = res.error
+    ? '<div class="alert alert-danger">' + res.error.message + '</div>'
+    : '<div class="alert alert-success">Email diperbarui! Cek email konfirmasi jika diminta.</div>';
+}
+async function savePassword() {
+  var p1 = document.getElementById('prof-pass1').value;
+  var p2 = document.getElementById('prof-pass2').value;
+  var al = document.getElementById('alert-password');
+  if (!p1||p1.length<6) { al.innerHTML='<div class="alert alert-danger">Password minimal 6 karakter.</div>'; return; }
+  if (p1!==p2) { al.innerHTML='<div class="alert alert-danger">Password tidak cocok.</div>'; return; }
+  var res = await sb.auth.updateUser({ password: p1 });
+  al.innerHTML = res.error
+    ? '<div class="alert alert-danger">' + res.error.message + '</div>'
+    : '<div class="alert alert-success">✅ Password berhasil diubah!</div>';
+  if (!res.error) { document.getElementById('prof-pass1').value=''; document.getElementById('prof-pass2').value=''; }
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGINATION HELPER
+// ─────────────────────────────────────────────────────────
+function buildPag(container, total, current, onChange) {
+  container.innerHTML = '';
+  if (total <= 1) return;
+  function mk(label, pg, disabled, active) {
+    var b = document.createElement('button');
+    b.className = 'pg-btn' + (active ? ' active' : '');
+    b.textContent = label; b.disabled = disabled;
+    b.addEventListener('click', function() { onChange(pg); });
+    container.appendChild(b);
+  }
+  mk('‹', current-1, current===1);
+  for (var i=1; i<=total; i++) mk(i, i, false, i===current);
+  mk('›', current+1, current===total);
+}
+// ─────────────────────────────────────────────────────────
+// EVENT DELEGATION — untuk tombol edit/delete di tabel
+// (menghindari onclick inline yang bisa menyebabkan syntax error)
+// ─────────────────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var action = btn.dataset.action;
+  var id     = btn.dataset.id;
+
+  if (action === 'edit-staff') {
+    var s = (window._staffMap || {})[id];
+    if (s) openStaffModal(s);
+  } else if (action === 'del-staff') {
+    deleteStaff(id);
+  } else if (action === 'edit-news') {
+    var n = (window._newsMap || {})[id];
+    if (n) editNews(n);
+  } else if (action === 'del-news') {
+    deleteNews(id);
+  }
+});
+
+
+</script>
+</body>
+</html>
