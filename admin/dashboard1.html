@@ -634,23 +634,19 @@ function renderStaffTable() {
     tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👥</div><p>Belum ada staff.</p></div></td></tr>';
     pag.innerHTML = ''; return;
   }
-  // Simpan data staff di Map agar tombol edit bisa akses via id
-  if (!window._staffMap) window._staffMap = {};
-  slice.forEach(function(s) { window._staffMap[s.id] = s; });
-
   tbody.innerHTML = slice.map(function(s) {
     var init = s.name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
     var img  = s.image_url
       ? '<img class="td-thumb" src="' + s.image_url + '" loading="lazy">'
       : '<div class="td-thumb-ph">' + init + '</div>';
+    var sj = JSON.stringify(s).replace(/"/g,'&quot;');
     return '<tr><td>' + img + '</td><td><strong>' + s.name + '</strong></td><td>' + s.position + '</td>'
       + '<td><span class="badge badge-navy">' + s.order_priority + '</span></td>'
       + '<td><div class="td-actions">'
-      + '<button class="btn btn-outline btn-sm" data-action="edit-staff" data-id="' + s.id + '">✏️ Edit</button>'
-      + '<button class="btn btn-danger btn-sm" data-action="del-staff" data-id="' + s.id + '">🗑️</button>'
+      + '<button class="btn btn-outline btn-sm" onclick='editStaff(' + JSON.stringify(s).replace(/'/g,"&#39;") + ')'>✏️ Edit</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="deleteStaff('' + s.id + '')">🗑️</button>'
       + '</div></td></tr>';
   }).join('');
-  buildPag(pag, pages, staffPage, function(p) { staffPage = p; renderStaffTable(); });
   buildPag(pag, pages, staffPage, function(p) { staffPage = p; renderStaffTable(); });
 }
 
@@ -723,17 +719,15 @@ function renderNewsTable() {
     tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📰</div><p>Belum ada berita.</p></div></td></tr>';
     pag.innerHTML = ''; return;
   }
-  if (!window._newsMap) window._newsMap = {};
-  slice.forEach(function(n) { window._newsMap[n.id] = n; });
-
   tbody.innerHTML = slice.map(function(n) {
     var date  = new Date(n.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
     var img   = n.thumbnail_url ? '<img class="td-thumb" src="' + n.thumbnail_url + '" loading="lazy">' : '<div class="td-thumb-ph" style="font-size:.7rem">IMG</div>';
     var title = n.title.length > 55 ? n.title.substring(0,55) + '…' : n.title;
+    var ns    = JSON.stringify(n).replace(/'/g,"&#39;");
     return '<tr><td>' + img + '</td><td><strong>' + title + '</strong></td><td>' + (n.author||'—') + '</td><td>' + date + '</td>'
       + '<td><div class="td-actions">'
-      + '<button class="btn btn-outline btn-sm" data-action="edit-news" data-id="' + n.id + '">✏️</button>'
-      + '<button class="btn btn-danger btn-sm" data-action="del-news" data-id="' + n.id + '">🗑️</button>'
+      + '<button class="btn btn-outline btn-sm" onclick='editNews(' + ns + ')'>✏️</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="deleteNews('' + n.id + '')">🗑️</button>'
       + '</div></td></tr>';
   }).join('');
   buildPag(pag, pages, newsPage, function(p) { newsPage = p; renderNewsTable(); });
@@ -969,30 +963,6 @@ function buildPag(container, total, current, onChange) {
   for (var i=1; i<=total; i++) mk(i, i, false, i===current);
   mk('›', current+1, current===total);
 }
-// ─────────────────────────────────────────────────────────
-// EVENT DELEGATION — untuk tombol edit/delete di tabel
-// (menghindari onclick inline yang bisa menyebabkan syntax error)
-// ─────────────────────────────────────────────────────────
-document.addEventListener('click', function(e) {
-  var btn = e.target.closest('[data-action]');
-  if (!btn) return;
-  var action = btn.dataset.action;
-  var id     = btn.dataset.id;
-
-  if (action === 'edit-staff') {
-    var s = (window._staffMap || {})[id];
-    if (s) openStaffModal(s);
-  } else if (action === 'del-staff') {
-    deleteStaff(id);
-  } else if (action === 'edit-news') {
-    var n = (window._newsMap || {})[id];
-    if (n) editNews(n);
-  } else if (action === 'del-news') {
-    deleteNews(id);
-  }
-});
-
-
 </script>
 </body>
 </html>
