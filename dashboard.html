@@ -846,16 +846,21 @@ async function loadMedia() {
     if (!resp.ok) throw new Error('Gagal memuat daftar foto');
     var json = await resp.json();
     allMediaFiles = json.files || [];
+    window.allMediaFiles = allMediaFiles;
     if (!allMediaFiles.length) {
       grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><h3>Belum ada foto</h3><p style="color:var(--gray-2);font-size:.85rem">Klik "Upload Foto" untuk menambahkan gambar</p></div>';
       return;
     }
-    grid.innerHTML = allMediaFiles.map(function(f) {
-      return '<div class="media-item" onclick="openMediaPreview('' + f.key.replace(/'/g,"\'") + '','' + f.url.replace(/'/g,"\'") + '')" title="' + f.name + '">'
-        + '<img src="' + f.url + '" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:140px;object-fit:cover"/>'
+    // Simpan files di Map agar event delegation bisa akses
+    window._mediaMap = {};
+    allMediaFiles.forEach(function(f) { window._mediaMap[f.key] = f; });
+
+    grid.innerHTML = allMediaFiles.map(function(f, idx) {
+      return '<div class="media-item" data-action="preview-media" data-key="' + idx + '" title="' + f.name + '">'
+        + '<img src="' + f.url + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" style="width:100%;height:140px;object-fit:cover"/>'
         + '<div style="display:none;height:140px;align-items:center;justify-content:center;font-size:2rem;background:var(--gray-5)">🖼️</div>'
         + '<div class="media-item-info"><div class="media-item-name" style="font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + f.name + '</div>'
-        + '<div class="media-copy-hint" style="font-size:.7rem;color:var(--gold)">Klik untuk lihat & salin URL</div></div></div>';
+        + '<div class="media-copy-hint" style="font-size:.7rem;color:var(--gold)">Klik untuk lihat &amp; salin URL</div></div></div>';
     }).join('');
   } catch(err) {
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Gagal memuat</h3><p>' + err.message + '</p></div>';
@@ -989,6 +994,10 @@ document.addEventListener('click', function(e) {
     if (n) editNews(n);
   } else if (action === 'del-news') {
     deleteNews(id);
+  } else if (action === 'preview-media') {
+    var files = window.allMediaFiles || [];
+    var idx = parseInt(id);
+    if (files[idx]) openMediaPreview(files[idx].key, files[idx].url);
   }
 });
 
